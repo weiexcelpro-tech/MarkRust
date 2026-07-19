@@ -2,9 +2,10 @@
 
 # markrust
 
-> MarkText rewritten with **Tauri 2 + Rust main process**, reusing the Vue 3 renderer and muya engine.
+> MarkText(https://github.com/marktext/marktext) rewritten with **Tauri 2 + Rust main process**, reusing the Vue 3 renderer and muya engine.
 
 **Current release: v1.0.0** — See [Releases](https://github.com/weiexcelpro-tech/markrust/releases).
+Just test on Windows 11. Here is Typora on MacOS.
 
 ## v1.0.0 Release Notes
 
