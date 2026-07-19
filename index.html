@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>MarkRust</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+                  script-src 'self' 'unsafe-eval';
+                  style-src 'self' 'unsafe-inline';
+                  img-src * data: file:;
+                  font-src 'self' data:;
+                  connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420 ws://localhost:1421;
+                  "
+    />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/renderer/src/main.ts"></script>
+  </body>
+</html>

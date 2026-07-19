@@ -1,0 +1,961 @@
+{
+  "menu": {
+    "counter": {
+      "words": "Wörter",
+      "characters": "Zeichen",
+      "paragraphs": "Absätze"
+    },
+    "file": {
+      "file": "Datei",
+      "newTab": "Neuer Tab",
+      "newWindow": "Neues Fenster",
+      "openFile": "Datei öffnen...",
+      "openFolder": "Ordner öffnen...",
+      "openRecent": "Zuletzt verwendet",
+      "clearRecentlyUsed": "Zuletzt verwendet löschen",
+      "save": "Speichern",
+      "saveAs": "Speichern unter...",
+      "autoSave": "Automatisch speichern",
+      "moveTo": "Verschieben nach",
+      "rename": "Umbenennen",
+      "export": "Exportieren",
+      "exportHtml": "Als HTML exportieren",
+      "exportPdf": "Als PDF exportieren",
+      "import": "Importieren",
+      "print": "Drucken",
+      "closeTab": "Tab schließen",
+      "closeWindow": "Fenster schließen",
+      "quit": "Beenden",
+      "preferences": "Einstellungen"
+    },
+    "edit": {
+      "edit": "Bearbeiten",
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "cut": "Ausschneiden",
+      "copy": "Kopieren",
+      "paste": "Einfügen",
+      "copyAsRich": "Als Rich Text kopieren",
+      "copyAsHtml": "Als HTML kopieren",
+      "pasteAsPlainText": "Als reinen Text einfügen",
+      "selectAll": "Alles auswählen",
+      "duplicate": "Duplizieren",
+      "createParagraph": "Absatz erstellen",
+      "deleteParagraph": "Absatz löschen",
+      "find": "Suchen",
+      "replace": "Ersetzen",
+      "findNext": "Weitersuchen",
+      "findPrevious": "Rückwärts suchen",
+      "findInFolder": "Im Ordner suchen",
+      "screenshot": "Screenshot",
+      "lineEnding": "Zeilenendezeichen",
+      "lineEndingCrlf": "CRLF (Windows)",
+      "lineEndingLf": "LF (Linux/Mac)"
+    },
+    "paragraph": {
+      "title": "Absatz",
+      "paragraph": "Absatz",
+      "heading1": "Überschrift 1",
+      "heading2": "Überschrift 2",
+      "heading3": "Überschrift 3",
+      "heading4": "Überschrift 4",
+      "heading5": "Überschrift 5",
+      "heading6": "Überschrift 6",
+      "promoteHeading": "Überschrift heraufstufen",
+      "demoteHeading": "Überschrift herabstufen",
+      "table": "Tabelle",
+      "codeFences": "Code-Blöcke",
+      "quoteBlock": "Zitat-Block",
+      "mathBlock": "Mathematik-Block",
+      "htmlBlock": "HTML-Block",
+      "orderedList": "Nummerierte Liste",
+      "bulletList": "Aufzählungsliste",
+      "taskList": "Aufgabenliste",
+      "looseListItem": "Lockeres Listenelement",
+      "horizontalRule": "Horizontale Linie",
+      "frontMatter": "Front Matter"
+    },
+    "window": {
+      "title": "Fenster",
+      "minimize": "Minimieren",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "fullScreen": "Vollbild",
+      "bringAllToFront": "Alle nach vorne bringen",
+      "alwaysOnTop": "Immer im Vordergrund"
+    },
+    "help": {
+      "help": "Hilfe",
+      "markdownReference": "Markdown-Referenz",
+      "changelog": "Änderungsprotokoll",
+      "askQuestion": "Frage stellen",
+      "reportBug": "Fehler melden",
+      "viewSource": "Quellcode anzeigen",
+      "followUs": "Folgen Sie uns",
+      "support": "MarkText unterstützen",
+      "license": "Lizenz",
+      "about": "Über",
+      "checkUpdates": "Updates prüfen"
+    },
+    "marktext": {
+      "title": "MarkText",
+      "about": "Über MarkText",
+      "checkUpdates": "Nach Updates suchen...",
+      "preferences": "Einstellungen",
+      "services": "Dienste",
+      "hide": "MarkText ausblenden",
+      "hideOthers": "Andere ausblenden",
+      "showAll": "Alle anzeigen",
+      "quit": "MarkText beenden"
+    },
+    "view": {
+      "view": "Ansicht",
+      "toggleSidebar": "Seitenleiste umschalten",
+      "toggleTabbar": "Tab-Leiste umschalten",
+      "commandPalette": "Befehlspalette",
+      "sourceCodeMode": "Quellcode-Modus",
+      "typewriterMode": "Schreibmaschinen-Modus",
+      "focusMode": "Fokus-Modus",
+      "toggleTableOfContents": "Inhaltsverzeichnis umschalten",
+      "reloadImages": "Bilder neu laden",
+      "showDeveloperTools": "Entwicklertools anzeigen",
+      "reloadWindow": "Fenster neu laden"
+    },
+    "format": {
+      "format": "Format",
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "underline": "Unterstrichen",
+      "strikethrough": "Durchgestrichen",
+      "image": "Bild",
+      "superscript": "Hochgestellt",
+      "subscript": "Tiefgestellt",
+      "highlight": "Hervorhebung",
+      "inlineCode": "Inline-Code",
+      "inlineMath": "Inline-Mathematik",
+      "hyperlink": "Hyperlink",
+      "clearFormat": "Format löschen"
+    },
+    "theme": {
+      "theme": "Design (&T)",
+      "dark": "Dunkel",
+      "followThemDisabled": "Themenauswahl deaktiviert, wenn dem Systemdesign gefolgt wird",
+      "lightThemes": "— Helle Designs —",
+      "darkThemes": "— Dunkle Designs —",
+      "ayuDark": "Ayu Dunkel",
+      "ayuLight": "Ayu Hell",
+      "ayuMirage": "Ayu Mirage",
+      "cadmiumDark": "Cadmium Dunkel",
+      "cadmiumLight": "Cadmium Hell",
+      "catppuccinLatte": "Catppuccin Latte",
+      "catppuccinMocha": "Catppuccin Mocha",
+      "cyberdream": "cyberdream",
+      "dracula": "Dracula",
+      "everforestDark": "Everforest Dunkel",
+      "everforestLight": "Everforest Hell",
+      "graphiteLight": "Graphit Hell",
+      "gruvboxDark": "Gruvbox Dunkel",
+      "gruvboxLight": "Gruvbox Hell",
+      "horizonDark": "Horizon Dunkel",
+      "kanagawa": "Kanagawa",
+      "materialDark": "Material Dunkel",
+      "monokaiPro": "Monokai Pro",
+      "nightfox": "Nightfox",
+      "nord": "Nord",
+      "oneDark": "One Dark",
+      "oxocarbonDark": "Oxocarbon Dunkel",
+      "palenight": "Palenight",
+      "rosePine": "Rosé Pine",
+      "rosePineDawn": "Rosé Pine Dawn",
+      "rosePineMoon": "Rosé Pine Moon",
+      "solarizedDark": "Solarized Dunkel",
+      "solarizedLight": "Solarized Hell",
+      "synthwave84": "Synthwave '84",
+      "tokyoNight": "Tokyo Night",
+      "tokyoNightLight": "Tokyo Night Hell",
+      "tokyoNightStorm": "Tokyo Night Storm",
+      "ulyssesLight": "Ulysses Hell"
+    }
+  },
+  "contextMenu": {
+    "cut": "Ausschneiden",
+    "copy": "Kopieren",
+    "paste": "Einfügen",
+    "copyAsRich": "Als Rich Text kopieren",
+    "copyAsHtml": "Als HTML kopieren",
+    "pasteAsPlainText": "Als reinen Text einfügen",
+    "insertParagraphBefore": "Absatz davor einfügen",
+    "insertParagraphAfter": "Absatz danach einfügen",
+    "spelling": "Rechtschreibung...",
+    "changeLanguage": "Sprache ändern...",
+    "addToDictionary": "Zum Wörterbuch hinzufügen",
+    "editDictionary": "Wörterbuch bearbeiten...",
+    "sideBar": {
+      "newFile": "Neue Datei",
+      "newDirectory": "Neuer Ordner",
+      "copy": "Kopieren",
+      "cut": "Ausschneiden",
+      "paste": "Einfügen",
+      "rename": "Umbenennen",
+      "moveToTrash": "In Papierkorb verschieben",
+      "showInFolder": "Im Ordner anzeigen"
+    },
+    "tabs": {
+      "close": "Schließen",
+      "closeOthers": "Andere schließen",
+      "closeSavedTabs": "Gespeicherte Tabs schließen",
+      "closeAllTabs": "Alle Tabs schließen",
+      "rename": "Umbenennen",
+      "copyPath": "Pfad kopieren",
+      "showInFolder": "Im Ordner anzeigen"
+    }
+  },
+  "search": {
+    "searchPlaceholder": "Suchen",
+    "caseSensitive": "Groß-/Kleinschreibung beachten",
+    "wholeWord": "Ganzes Wort",
+    "useRegex": "Reguläre Ausdrücke verwenden",
+    "replacementPlaceholder": "Ersetzen",
+    "replaceAll": "Alle ersetzen",
+    "replaceSingle": "Einzeln ersetzen",
+    "invalidRegex": "Ungültiger regulärer Ausdruck \"{pattern}\"",
+    "regexMatchEmpty": "Regulärer Ausdruck entspricht leerem String \"{pattern}\"",
+    "searchResultInfo": "{matchCount} Treffer in {fileCount} Dateien",
+    "searchLimited": "Suche auf die ersten {count} Ergebnisse beschränkt"
+  },
+  "sideBar": {
+    "search": {
+      "searchInFolder": "Im Ordner suchen...",
+      "noFolderOpen": "Kein Ordner geöffnet",
+      "noResultsFound": "Keine Ergebnisse gefunden.",
+      "cancel": "Abbrechen",
+      "openFolder": "Ordner öffnen",
+      "showMoreMatches": "Weitere Treffer anzeigen"
+    },
+    "tree": {
+      "openedFiles": "Geöffnete Dateien",
+      "saveAll": "Alle speichern",
+      "closeAll": "Alle schließen",
+      "emptyProject": "Leeres Projekt",
+      "createFile": "Datei erstellen",
+      "openFolder": "Ordner öffnen"
+    },
+    "toc": {
+      "title": "Inhaltsverzeichnis"
+    },
+    "icons": {
+      "files": "Dateien",
+      "search": "Suchen",
+      "toc": "Inhaltsverzeichnis",
+      "settings": "Einstellungen"
+    }
+  },
+  "commandPalette": {
+    "placeholder": "Befehl zum Ausführen eingeben",
+    "placeholders": {
+      "selectOption": "Option auswählen",
+      "searchFileToOpen": "Datei zum Öffnen suchen",
+      "selectLanguage": "Sprache auswählen"
+    }
+  },
+  "exportSettings": {
+    "autoNumberingHeadings": "Automatische Nummerierung der Überschriften",
+    "title": "Export-Optionen",
+    "info": {
+      "label": "Information",
+      "description": "Bitte passen Sie das Seitenlayout an und klicken Sie auf 'Exportieren', um fortzufahren."
+    },
+    "page": {
+      "label": "Seite",
+      "pageTitle": "Seitentitel:",
+      "pageSize": "Seitengröße:",
+      "landscapeOrientation": "Querformat:",
+      "pageMargin": "Seitenrand (mm):",
+      "topBottom": "Oben/Unten:",
+      "leftRight": "Links/Rechts:",
+      "widthHeight": "Breite/Höhe (mm):"
+    },
+    "showFrontMatter": "Front Matter anzeigen",
+    "style": {
+      "label": "Stil",
+      "overwriteThemeFont": "Design-Schrifteinstellungen überschreiben",
+      "fontFamily": "Schriftfamilie:",
+      "fontSize": "Schriftgröße",
+      "lineHeight": "Zeilenhöhe"
+    },
+    "theme": {
+      "label": "Design",
+      "description": "Sie können das Aussehen des Dokuments ändern, indem Sie ein Design auswählen oder ein benutzerdefiniertes Design erstellen.",
+      "theme": "Design"
+    },
+    "headerFooter": {
+      "allowStyled": "Gestylten Text erlauben",
+      "customizeStyle": "Stil anpassen",
+      "fontSize": "Schriftgröße",
+      "footerType": "Fußzeilentyp",
+      "headerType": "Kopfzeilentyp",
+      "label": "Kopf- und Fußzeile",
+      "leftFooterText": "Linker Fußzeilentext",
+      "leftHeaderText": "Linker Kopfzeilentext",
+      "mainFooterText": "Haupt-Fußzeilentext",
+      "mainHeaderText": "Haupt-Kopfzeilentext",
+      "rightFooterText": "Rechter Fußzeilentext",
+      "rightHeaderText": "Rechter Kopfzeilentext",
+      "description": "Wenn eine Kopf- und/oder Fußzeile definiert ist, wird der Text auf allen Seiten angezeigt."
+    },
+    "toc": {
+      "includeTopHeading": "Oberste Überschrift einschließen",
+      "includeTopHeadingDetail": "Details der obersten Überschrift einschließen",
+      "label": "Inhaltsverzeichnis",
+      "title": "Inhaltsverzeichnis"
+    },
+    "export": "Exportieren...",
+    "options": {
+      "pageSizes": {
+        "a3": "A3",
+        "a4": "A4",
+        "a5": "A5",
+        "legal": "Legal",
+        "letter": "Letter",
+        "tabloid": "Tabloid",
+        "custom": "Benutzerdefiniert"
+      },
+      "headerFooterTypes": {
+        "none": "Keine",
+        "singleCell": "Einzelne Zelle",
+        "threeCells": "Drei Zellen"
+      },
+      "headerFooterStyles": {
+        "default": "Standard",
+        "simple": "Einfach",
+        "styled": "Gestylt"
+      },
+      "themes": {
+        "academic": "Akademisch",
+        "default": "GitHub (Standard)",
+        "liber": "Liber"
+      }
+    }
+  },
+  "recent": {
+    "noTabsOpen": "Sie haben keine Tabs geöffnet.",
+    "newFile": "Neue Datei"
+  },
+  "import": {
+    "title": "Importieren oder öffnen",
+    "description": "Hier hineinziehen, um Ihren Inhalt in MarkText zu importieren"
+  },
+  "preferences": {
+    "title": "Einstellungen",
+    "search": {
+      "placeholder": "In Einstellungen suchen...",
+      "categories": {
+        "general": "Allgemein",
+        "editor": "Editor",
+        "markdown": "Markdown",
+        "theme": "Theme",
+        "image": "Bild",
+        "view": "Ansicht",
+        "searcher": "Suche",
+        "watcher": "Watcher",
+        "spelling": "Rechtschreibung",
+        "custom css": "Benutzerdefiniertes CSS"
+      },
+      "items": {
+        "autoSave": "Den bearbeiteten Inhalt automatisch speichern",
+        "autoSaveDelay": "Die Zeit in ms nach einer Änderung, bis die Datei gespeichert wird",
+        "autoNormalizeLineEndings": "Zeilenenden beim Öffnen von Dateien automatisch normalisieren. Wenn deaktiviert, werden Dateien unverändert geöffnet.",
+        "titleBarStyle": "Der Titelleisten-Stil (nur Windows und Linux-System)",
+        "openFilesInNewWindow": "Dateien in einem neuen Fenster öffnen",
+        "openFolderInNewWindow": "Ordner über Menü in einem neuen Fenster öffnen",
+        "zoom": "Das Zoom-Level. Zwischen 0.5 und 2.0 inklusive",
+        "hideScrollbar": "Ob Scrollbalken ausgeblendet werden sollen",
+        "wordWrapInToc": "Ob Zeilenumbruch im Inhaltsverzeichnis aktiviert werden soll",
+        "fileSortBy": "Dateien im geöffneten Ordner nach Erstellungszeit, Änderungszeit und Titel sortieren",
+        "startUpAction": "Die Aktion nach MarkText-Start, letzten bearbeiteten Inhalt öffnen, angegebenen Ordner öffnen oder leere Seite",
+        "restoreLayoutState": "Vorherigen Editorzustand beim Start wiederherstellen",
+        "defaultDirectoryToOpen": "Das Standard-Verzeichnis, das beim Start geöffnet werden soll, wenn startUp=folder",
+        "language": "Die Sprache, die MarkText verwendet",
+        "editorFontFamily": "Editor-Schriftfamilie",
+        "fontSize": "Schriftgröße in Pixeln",
+        "lineHeight": "Zeilenhöhe",
+        "wrapCodeBlocks": "Text in Codeblöcken umbrechen",
+        "editorLineWidth": "Definiert die maximale Editor-Bereichsbreite. Ein leerer String oder Suffixe von ch (Zeichen), px (Pixel) oder % (Prozent) sind erlaubt",
+        "codeFontSize": "Schriftgröße im Codeblock, der Bereich ist 12 ~ 18",
+        "codeFontFamily": "Schriftfamilie im Codeblock",
+        "codeBlockLineNumbers": "Ob Zeilennummern angezeigt werden sollen",
+        "trimUnnecessaryCodeBlockEmptyLines": "Leere Zeilen am Anfang und Ende des Codeblocks entfernen",
+        "autoPairBracket": "Automatische Klammern beim Bearbeiten",
+        "autoPairMarkdownSyntax": "Markdown-Syntax automatisch vervollständigen",
+        "autoPairQuote": "Automatische Vervollständigung von Anführungszeichen",
+        "endOfLine": "Das Zeilenendezeichen am Ende jeder Zeile. Der Standardwert ist default, der das Standard-Zeilenendezeichen Ihres Betriebssystems auswählt",
+        "defaultEncoding": "Die Standard-Dateikodierung",
+        "autoGuessEncoding": "Versuchen, die Dateikodierung beim Öffnen von Dateien automatisch zu erraten",
+        "trimTrailingNewline": "Die Option zum Entfernen nachfolgender Zeilenumbrüche",
+        "textDirection": "Die Schreibrichtung des Textes",
+        "hideQuickInsertHint": "Hinweis zum schnellen Erstellen von Absätzen ausblenden",
+        "hideLinkPopup": "Link-Popup ausblenden, wenn der Cursor über dem Link schwebt",
+        "autoCheck": "Ob verwandte Aufgabe automatisch geprüft werden soll",
+        "preferLooseListItem": "Der bevorzugte Listentyp",
+        "bulletListMarker": "Die Markierung in Aufzählungslisten",
+        "orderListDelimiter": "Das Trennzeichen in geordneten Listen",
+        "preferHeadingStyle": "Der bevorzugte Überschriften-Stil in MarkText",
+        "tabSize": "Tab durch x Leerzeichen ersetzen",
+        "listIndentation": "Einrückung der Liste auswählen",
+        "frontmatterType": "Der Frontmatter-Typ",
+        "superSubScript": "Pandocs Markdown-Erweiterung für hoch- und tiefgestellte Zeichen aktivieren",
+        "footnote": "Pandocs Markdown-Erweiterung für Fußnoten aktivieren",
+        "isHtmlEnabled": "HTML-Rendering aktivieren",
+        "isGitlabCompatibilityEnabled": "GitLab-Kompatibilitätsmodus aktivieren",
+        "sequenceTheme": "Sequenzdiagramm-Theme",
+        "plantumlServer": "PlantUML-Server-URL",
+        "theme": "Das in MarkText verwendete Theme auswählen",
+        "followSystemTheme": "Systemdesign folgen",
+        "lightModeTheme": "Design, das verwendet werden soll, wenn sich das System im hellen Modus befindet",
+        "darkModeTheme": "Design, das verwendet werden soll, wenn sich das System im dunklen Modus befindet",
+        "spellcheckerEnabled": "Ob Rechtschreibprüfung aktiviert ist",
+        "spellcheckerNoUnderline": "Rechtschreibfehler nicht unterstreichen",
+        "spellcheckerLanguage": "Die Rechtschreibprüfungs-Sprache",
+        "imageInsertAction": "Das Standardverhalten nach dem Einfügen von Bildern aus einem lokalen Ordner",
+        "imagePreferRelativeDirectory": "Ob das relative Bildverzeichnis bevorzugt werden soll",
+        "imageRelativeDirectoryBase": "Wohin relative Bilder kopiert werden",
+        "imageRelativeDirectoryName": "Der relative Bildordner-Name",
+        "fileSortOrder": "Sortierreihenfolge für Dateien in geöffneten Ordnern: aufsteigend oder absteigend.",
+        "openedFilesInSidebar": "Ob geöffnete Dateien in der Seitenleiste angezeigt werden sollen."
+      }
+    },
+    "categories": {
+      "general": "Allgemein",
+      "editor": "Editor",
+      "markdown": "Markdown",
+      "spelling": "Rechtschreibung",
+      "theme": "Design",
+      "image": "Bild",
+      "keybindings": "Tastenkürzel"
+    },
+    "general": {
+      "title": "Allgemein",
+      "autoSave": {
+        "title": "Automatisches Speichern",
+        "description": "Automatisches Speichern",
+        "delayDescription": "Verzögerung beim automatischen Speichern"
+      },
+      "window": {
+        "title": "Fenster",
+        "titleBarStyle": {
+          "title": "Titelleistenstil",
+          "custom": "Benutzerdefiniert",
+          "native": "Nativ"
+        },
+        "requiresRestart": "Erfordert Neustart",
+        "hideScrollbars": "Bildlaufleisten ausblenden",
+        "openFilesInNewWindow": "Dateien in neuem Fenster öffnen",
+        "openFoldersInNewWindow": "Ordner in neuem Fenster öffnen",
+        "zoom": "Zoom"
+      },
+      "startup": {
+        "title": "Start",
+        "layoutOptions": "Layout-Optionen",
+        "startupFilesFolders": "Startdateien/-ordner",
+        "restorePreviousState": "Vorherigen Editorzustand wiederherstellen",
+        "openBlankState": "Leeren Zustand öffnen",
+        "openDefaultDirectory": "Standardverzeichnis öffnen",
+        "openLastFolder": "Geöffneten Ordner wiederherstellen",
+        "restoreAll": "Alle geöffneten Dateien und Ordner wiederherstellen",
+        "selectFolder": "Ordner auswählen",
+        "openBlankPage": "Leere Seite öffnen"
+      },
+      "sidebar": {
+        "title": "Seitenleiste",
+        "wrapTextInToc": "Text im Inhaltsverzeichnis umbrechen",
+        "showOpenedFiles": "Geöffnete Dateien anzeigen",
+        "excludePatterns": "Ausschlussmuster",
+        "excludePatternsNotes": "Hinweise zu Ausschlussmustern",
+        "fileSortBy": {
+          "title": "Dateien sortieren nach",
+          "creationTime": "Erstellungszeit",
+          "modificationTime": "Änderungszeit",
+          "filename": "Dateiname"
+        },
+        "fileSortOrder": {
+          "title": "Sortierreihenfolge",
+          "aToZ": "A → Z",
+          "zToA": "Z → A",
+          "oldestFirst": "Älteste zuerst",
+          "newestFirst": "Neueste zuerst"
+        }
+      },
+      "misc": {
+        "title": "Verschiedenes",
+        "language": {
+          "title": "Sprache",
+          "english": "English",
+          "chinese": "简体中文",
+          "traditionalChinese": "繁體中文",
+          "spanish": "Español",
+          "french": "Français",
+          "german": "Deutsch",
+          "japanese": "日本語",
+          "korean": "한국어",
+          "portuguese": "Português",
+          "turkish": "Türkçe"
+        }
+      }
+    },
+    "editor": {
+      "title": "Editor",
+      "textEditor": {
+        "title": "Texteditor",
+        "fontSize": "Schriftgröße",
+        "lineHeight": "Zeilenhöhe",
+        "fontFamily": "Schriftfamilie",
+        "maxWidth": "Maximale Breite",
+        "maxWidthNotes": "Maximale Breite des Editor-Inhalts"
+      },
+      "codeBlock": {
+        "title": "Code-Block",
+        "fontSize": "Schriftgröße",
+        "fontFamily": "Schriftfamilie",
+        "showLineNumbers": "Zeilennummern anzeigen",
+        "removeEmptyLines": "Leere Zeilen entfernen"
+      },
+      "writingBehavior": {
+        "title": "Schreibverhalten",
+        "autoCloseBrackets": "Klammern automatisch schließen",
+        "autoCompleteMarkdown": "Markdown automatisch vervollständigen",
+        "autoCloseQuotes": "Anführungszeichen automatisch schließen"
+      },
+      "fileRepresentation": {
+        "title": "Dateidarstellung",
+        "tabWidth": "Tab-Breite",
+        "lineSeparator": "Zeilentrenner",
+        "defaultEncoding": "Standard-Kodierung",
+        "autoDetectEncoding": "Kodierung automatisch erkennen",
+        "trailingNewlines": {
+          "title": "Abschließende neue Zeilen",
+          "doNothing": "Nichts tun",
+          "ensureOne": "Eine sicherstellen",
+          "preserve": "Beibehalten",
+          "trimAll": "Alle entfernen"
+        },
+        "endOfLine": {
+          "default": "Standard",
+          "crlf": "CRLF (Windows)",
+          "lf": "LF (Linux/Mac)"
+        }
+      },
+      "misc": {
+        "title": "Verschiedenes",
+        "textDirection": {
+          "title": "Textrichtung",
+          "ltr": "Links nach rechts",
+          "rtl": "Rechts nach links"
+        },
+        "hideQuickInsertHint": "Schnelleinfügung-Hinweis ausblenden",
+        "hideLinkPopup": "Link-Popup ausblenden",
+        "autoCheck": "Automatische Überprüfung",
+        "autoNormalizeLineEndings": "Zeilenenden beim Öffnen automatisch auf LF normalisieren",
+        "wrapCodeBlocks": "Code-Blöcke umbrechen"
+      }
+    },
+    "image": {
+      "title": "Bild",
+      "actions": {
+        "upload": "In die Cloud hochladen",
+        "folder": "In Ordner kopieren",
+        "path": "Absoluten Pfad verwenden"
+      },
+      "folderSetting": {
+        "title": "Ordnereinstellungen",
+        "globalFolder": "Globaler Bilderordner",
+        "open": "Öffnen",
+        "showInFolder": "Im Ordner anzeigen",
+        "preferRelative": "Relatives Verzeichnis bevorzugen",
+        "relativeCopyLocation": "Bild relativ kopieren zu",
+        "copyRelativeToFile": "Relativ zur Datei",
+        "copyRelativeToFolder": "Relativ zum Ordner",
+        "relativeFolderName": "Name des relativen Ordners",
+        "filenameNote": "Der Dateiname wird automatisch generiert."
+      },
+      "uploader": {
+        "title": "Bild-Uploader",
+        "currentUploader": "Aktueller Uploader: {name}",
+        "picgoNotInstalled": "PicGo nicht installiert",
+        "picgoInstalled": "PicGo installiert",
+        "picgoDetectionFailed": "PicGo-Erkennung fehlgeschlagen",
+        "debugInfo": "Debug-Informationen",
+        "npmInstallCommand": "npm install picgo -g",
+        "yarnInstallCommand": "yarn global add picgo",
+        "pnpmInstallCommand": "pnpm add -g picgo",
+        "chooseInstallMethod": "Installationsmethode wählen:",
+        "retestPicgo": "Erneut testen",
+        "lastDetectionTime": "Letzte Erkennungszeit",
+        "usageGuide": {
+          "title": "PicGo Grundlegende Anleitung",
+          "step1": "Uploader konfigurieren",
+          "step1Description": "Verwenden Sie den folgenden Befehl, um den PicGo-Uploader zu konfigurieren:",
+          "step2": "Bilder hochladen",
+          "step2Description": "Verwenden Sie den folgenden Befehl, um Bilder hochzuladen:",
+          "step3": "Konfiguration anzeigen",
+          "step3Description": "Verwenden Sie den folgenden Befehl, um die aktuelle Konfiguration anzuzeigen:",
+          "documentation": "Vollständige Dokumentation anzeigen"
+        },
+        "scriptDescription": "Skriptbeschreibung",
+        "scriptLocation": "Skriptort",
+        "save": "Speichern",
+        "saveConfig": "Konfiguration speichern",
+        "scriptConfigSaved": "Skriptkonfiguration gespeichert",
+        "services": {
+          "picgo": "PicGo",
+          "cliScript": "CLI-Skript"
+        },
+        "pleaseInstall": "Bitte installieren",
+        "scriptPath": "Skriptpfad",
+        "picgoDetection": "PicGo-Erkennung",
+        "lastSuccessTime": "Letzte erfolgreiche Zeit",
+        "neverDetected": "Nie erkannt",
+        "neverSuccessful": "Nie erfolgreich"
+      },
+      "defaultBehavior": "Standardverhalten nach dem Einfügen oder Ziehen eines Bildes in MarkText"
+    },
+    "markdown": {
+      "title": "Markdown",
+      "extensions": {
+        "title": "Erweiterungen",
+        "superSubScript": "Hoch-/Tiefgestellt",
+        "footnote": "Fußnote",
+        "footnoteNotes": "Fußnoten",
+        "frontmatterType": {
+          "jsonBrace": "JSON-Klammer",
+          "jsonSemicolon": "JSON-Semikolon",
+          "title": "Front Matter Typ"
+        }
+      },
+      "diagrams": {
+        "title": "Diagramme",
+        "sequenceTheme": {
+          "title": "Sequenz-Design",
+          "handDrawn": "Handgezeichnet",
+          "simple": "Einfach"
+        },
+        "plantumlServer": {
+          "title": "PlantUML-Server-URL"
+        }
+      },
+      "misc": {
+        "preferHeadingStyle": {
+          "title": "Bevorzugter Überschriftenstil",
+          "atx": "ATX-Stil",
+          "setext": "Setext-Stil"
+        },
+        "title": "Verschiedenes"
+      },
+      "compatibility": {
+        "enableGitlab": "GitLab-Kompatibilität aktivieren",
+        "enableHtml": "HTML-Unterstützung aktivieren",
+        "title": "Kompatibilität"
+      },
+      "lists": {
+        "bulletListMarker": "Aufzählungszeichen",
+        "listIndentation": {
+          "title": "Listeneinrückung",
+          "dfm": "DFM-Stil",
+          "fourSpaces": "Vier Leerzeichen",
+          "oneSpace": "Ein Leerzeichen",
+          "tab": "Tabulator",
+          "threeSpaces": "Drei Leerzeichen",
+          "twoSpaces": "Zwei Leerzeichen"
+        },
+        "orderListDelimiter": "Nummerierte Liste Trennzeichen",
+        "preferLooseListItem": "Lockere Listenelemente bevorzugen",
+        "title": "Listen"
+      }
+    },
+    "theme": {
+      "title": "Design",
+      "followSystemTheme": "Systemdesign folgen",
+      "modeThemes": "Design-Auswahl",
+      "lightModeTheme": "Helles Modus-Design",
+      "darkModeTheme": "Dunkles Modus-Design",
+      "customCss": "Benutzerdefiniertes CSS",
+      "importCustomThemes": "Benutzerdefinierte Designs importieren",
+      "importTheme": "Design importieren",
+      "openFolder": "Ordner öffnen",
+      "openThemesFolder": "Design-Ordner öffnen"
+    },
+    "keybindings": {
+      "title": "Tastenkürzel",
+      "description": "Tastenkürzel anpassen",
+      "save": "Speichern",
+      "restoreDefaults": "Standardwerte wiederherstellen",
+      "debugOptions": "Debug-Optionen",
+      "dumpKeyboardInfo": "Tastatur-Informationen ausgeben",
+      "failedToSave": "Speichern der Tastenkürzel fehlgeschlagen",
+      "keyInputDialog": {
+        "instructions": "Drücken Sie die Tastenkombination, die Sie zuweisen möchten",
+        "invalidKeybinding": "Ungültiges Tastenkürzel",
+        "placeholder": "Tasten drücken..."
+      },
+      "online": "Online",
+      "saveError": "Fehler beim Speichern der Tastenkürzel",
+      "shortcutInUse": "Tastenkürzel wird verwendet",
+      "shortcutInUseMessage": "Dieses Tastenkürzel ist bereits {accelerator} zugeordnet",
+      "table": {
+        "description": "Beschreibung",
+        "edit": "Bearbeiten",
+        "keyCombination": "Tastenkombination",
+        "options": "Optionen",
+        "reset": "Zurücksetzen",
+        "unbind": "Aufheben"
+      }
+    },
+    "selectFont": "Schrift auswählen",
+    "spellchecker": {
+      "autoDetectDescription": "Sprache des Dokuments automatisch erkennen",
+      "autoDetectLanguage": "Sprache automatisch erkennen",
+      "customDictionary": {
+        "delete": "Löschen",
+        "description": "Benutzerdefinierte Wörter zu Ihrem persönlichen Wörterbuch hinzufügen",
+        "noWordsAvailable": "Keine Wörter verfügbar",
+        "options": "Optionen",
+        "title": "Benutzerdefiniertes Wörterbuch",
+        "word": "Wort"
+      },
+      "defaultLanguage": "Standardsprache",
+      "enableSpellChecking": "Rechtschreibprüfung aktivieren",
+      "hideMarksForErrors": "Markierungen für Rechtschreibfehler ausblenden",
+      "title": "Rechtschreibprüfung"
+    }
+  },
+  "about": {
+    "copyright": "Copyright © Luo Ran 2017-{year}",
+    "copyrightContributors": "Urheberrecht Mitwirkende"
+  },
+  "commands": {
+    "mt": {
+      "hide": "MarkText ausblenden",
+      "hideOthers": "Andere ausblenden"
+    },
+    "file": {
+      "newWindow": "Neues Fenster",
+      "newTab": "Neuer Tab",
+      "openFile": "Datei öffnen",
+      "openFolder": "Ordner öffnen",
+      "save": "Speichern",
+      "saveAs": "Speichern unter",
+      "moveFile": "Datei verschieben",
+      "renameFile": "Datei umbenennen",
+      "quickOpen": "Schnell öffnen",
+      "changeEncoding": "Kodierung ändern",
+      "changeLineEnding": "Zeilenendezeichen ändern",
+      "trailingNewline": "Abschließende neue Zeile",
+      "print": "Drucken",
+      "preferences": "Einstellungen",
+      "closeTab": "Tab schließen",
+      "closeWindow": "Fenster schließen",
+      "quit": "Beenden",
+      "toggleAutoSave": "Automatisches Speichern umschalten",
+      "importFile": "Datei importieren",
+      "exportFile": "Datei exportieren",
+      "exportFilePdf": "Als PDF exportieren",
+      "zoom": "Zoom",
+      "checkUpdate": "Nach Updates suchen"
+    },
+    "edit": {
+      "undo": "Rückgängig",
+      "redo": "Wiederholen",
+      "cut": "Ausschneiden",
+      "copy": "Kopieren",
+      "paste": "Einfügen",
+      "copyAsRich": "Als Rich Text kopieren",
+      "copyAsHtml": "Als HTML kopieren",
+      "pasteAsPlaintext": "Als reinen Text einfügen",
+      "selectAll": "Alles auswählen",
+      "duplicate": "Duplizieren",
+      "createParagraph": "Absatz erstellen",
+      "deleteParagraph": "Absatz löschen",
+      "find": "Suchen",
+      "findNext": "Weitersuchen",
+      "findPrevious": "Rückwärts suchen",
+      "replace": "Ersetzen",
+      "findInFolder": "Im Ordner suchen",
+      "screenshot": "Screenshot"
+    },
+    "paragraph": {
+      "heading1": "Überschrift 1",
+      "heading2": "Überschrift 2",
+      "heading3": "Überschrift 3",
+      "heading4": "Überschrift 4",
+      "heading5": "Überschrift 5",
+      "heading6": "Überschrift 6",
+      "upgradeHeading": "Überschrift heraufstufen",
+      "degradeHeading": "Überschrift herabstufen",
+      "table": "Tabelle",
+      "codeFence": "Code-Block",
+      "quoteBlock": "Zitat-Block",
+      "mathFormula": "Mathematische Formel",
+      "htmlBlock": "HTML-Block",
+      "orderList": "Nummerierte Liste",
+      "bulletList": "Aufzählungsliste",
+      "taskList": "Aufgabenliste",
+      "looseListItem": "Lockeres Listenelement",
+      "paragraph": "Absatz",
+      "horizontalLine": "Horizontale Linie",
+      "frontMatter": "Front Matter",
+      "resetParagraph": "Absatz zurücksetzen",
+      "mathBlock": "Mathe-Block",
+      "horizontalRule": "Horizontale Linie"
+    },
+    "format": {
+      "strong": "Fett",
+      "emphasis": "Kursiv",
+      "underline": "Unterstrichen",
+      "superscript": "Hochgestellt",
+      "subscript": "Tiefgestellt",
+      "highlight": "Hervorhebung",
+      "inlineCode": "Inline-Code",
+      "inlineMath": "Inline-Mathematik",
+      "strike": "Durchgestrichen",
+      "hyperlink": "Hyperlink",
+      "image": "Bild",
+      "clearFormat": "Format löschen"
+    },
+    "window": {
+      "minimize": "Minimieren",
+      "toggleAlwaysOnTop": "Immer im Vordergrund umschalten",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "toggleFullScreen": "Vollbild umschalten",
+      "changeTheme": "Design ändern",
+      "close": "Schließen"
+    },
+    "view": {
+      "commandPalette": "Befehlspalette",
+      "sourceCodeMode": "Quellcode-Modus",
+      "typewriterMode": "Schreibmaschinen-Modus",
+      "focusMode": "Fokus-Modus",
+      "toggleSourceCodeMode": "Quellcode-Modus umschalten",
+      "toggleTypewriterMode": "Schreibmaschinen-Modus umschalten",
+      "toggleFocusMode": "Fokus-Modus umschalten",
+      "toggleSidebar": "Seitenleiste umschalten",
+      "toggleToc": "Inhaltsverzeichnis umschalten",
+      "toggleTabbar": "Tab-Leiste umschalten",
+      "toggleDevTools": "Entwicklertools umschalten",
+      "devReload": "Entwickler-Neuladen",
+      "reloadImages": "Bilder neu laden",
+      "textDirection": "Textrichtung",
+      "actualSize": "Tatsächliche Größe",
+      "devToggleDeveloperTools": "Entwicklertools umschalten"
+    },
+    "tabs": {
+      "cycleForward": "Vorwärts wechseln",
+      "cycleBackward": "Rückwärts wechseln",
+      "switchToLeft": "Nach links wechseln",
+      "switchToRight": "Nach rechts wechseln",
+      "switchToFirst": "Zum ersten wechseln",
+      "switchToSecond": "Zum zweiten wechseln",
+      "switchToThird": "Zum dritten wechseln",
+      "switchToFourth": "Zum vierten wechseln",
+      "switchToFifth": "Zum fünften wechseln",
+      "switchToSixth": "Zum sechsten wechseln",
+      "switchToSeventh": "Zum siebten wechseln",
+      "switchToEighth": "Zum achten wechseln",
+      "switchToNinth": "Zum neunten wechseln",
+      "switchToTenth": "Zum zehnten wechseln"
+    },
+    "docs": {
+      "userGuide": "Benutzerhandbuch",
+      "markdownSyntax": "Markdown-Syntax"
+    },
+    "spellchecker": {
+      "switchLanguage": "Sprache wechseln"
+    }
+  },
+  "common": {
+    "cancel": "Abbrechen",
+    "ok": "OK"
+  },
+  "dialog": {
+    "cancel": "Abbrechen",
+    "changesWillBeLost": "Änderungen gehen verloren",
+    "close": "Schließen",
+    "dontSave": "Nicht speichern",
+    "file": "Datei",
+    "fileExists": "Datei existiert bereits: {filename}",
+    "files": "Dateien",
+    "importWarning": "Import-Warnung",
+    "installPandoc": "Pandoc installieren",
+    "keepOpen": "Offen halten",
+    "replace": "Ersetzen",
+    "save": "Speichern",
+    "saveChanges": "Änderungen speichern",
+    "saveFailure": "Speichern fehlgeschlagen"
+  },
+  "error": {
+    "configSchemaViolation": "Konfigurationsschema-Verletzung",
+    "copyError": "Kopierfehler",
+    "initializationFailed": "Initialisierung fehlgeschlagen {hint}",
+    "otherInstanceDetected": "Eine andere Instanz von MarkText läuft bereits",
+    "report": "Melden",
+    "startupError": "Startfehler",
+    "terminatedDueToError": "Aufgrund eines Fehlers beendet",
+    "unexpectedErrorWithMessage": "Unerwarteter Fehler mit Nachricht {message}",
+    "unexpectedMainProcess": "Unerwarteter Hauptprozess-Fehler",
+    "unexpectedRendererProcess": "Unerwarteter Renderer-Prozess-Fehler"
+  },
+  "notifications": {
+    "defaultMessage": "Standardnachricht",
+    "defaultTitle": "Benachrichtigung"
+  },
+  "store": {
+    "editor": {
+      "anchorLinkCopied": "Anker-Link kopiert",
+      "tabNotFound": "Tab nicht gefunden",
+      "tocItemNotFound": "Inhaltsverzeichnis {key} nicht gefunden",
+      "errorLoadingTabTitle": "Fehler beim Laden des Tabs",
+      "errorLoadingTabMessage": "Beim Laden der Dateiänderung ist ein Fehler aufgetreten, da der Tab nicht gefunden werden kann.",
+      "mixedLineEndingsNormalized": "„{name}“ enthält gemischte Zeilenenden, die automatisch zu {lineEnding} normalisiert wurden.",
+      "imageDeletionUrlTitle": "Bild‑Lösch‑URL",
+      "imageDeletionUrlMessage": "Klicken, um die Lösch-URL des hochgeladenen Bildes in die Zwischenablage zu kopieren ({url}).",
+      "errorWhileSaving": "Beim Speichern ist ein Fehler aufgetreten: {msg}",
+      "exportSuccessTitle": "Erfolgreich exportiert",
+      "exportSuccessMessage": "„{name}“ wurde erfolgreich exportiert!",
+      "fileRemovedOnDisk": "„{name}“ wurde auf dem Datenträger gelöscht.",
+      "fileChangedOnDisk": "„{name}“ wurde auf dem Datenträger geändert. Möchten Sie neu laden?"
+    }
+  },
+  "spellchecker": {
+    "failedToRemoveWord": "Wort konnte nicht aus dem Wörterbuch entfernt werden",
+    "unexpectedError": "Unerwarteter Rechtschreibprüfungsfehler"
+  },
+  "editor": {
+    "export": {
+      "error": "Export-Fehler",
+      "errorExporting": "Fehler beim Exportieren der {type}-Datei",
+      "failed": "{type}-Export fehlgeschlagen"
+    },
+    "insertTable": {
+      "title": "Tabelle einfügen",
+      "rows": "Zeilen",
+      "columns": "Spalten"
+    },
+    "notifications": {
+      "notificationNotFound": "Benachrichtigung nicht gefunden"
+    },
+    "print": {
+      "error": "Druckfehler für \"{title}\"",
+      "failed": "Drucken fehlgeschlagen"
+    },
+    "sourceCode": {
+      "cursorNullComment": "Cursor-Null-Kommentar",
+      "imageStructureDeletedComment": "Bildstruktur-gelöscht-Kommentar"
+    },
+    "spellcheck": {
+      "disabledError": "Fehler beim Deaktivieren der Rechtschreibprüfung",
+      "errorSwitchingLanguage": "Fehler beim Wechseln der Rechtschreibprüfungssprache {languageCode}",
+      "languageMissing": "Rechtschreibprüfungssprache fehlt {languageCode}",
+      "switchError": "Rechtschreibprüfung-Wechselfehler für {languageCode}, {error}",
+      "title": "Rechtschreibprüfung"
+    }
+  }
+}

@@ -1,0 +1,1033 @@
+{
+  "timestamp": "2026-07-17T16:40:17.757Z",
+  "globals": "{\"hasTauriInternals\":\"object\",\"hasTauri\":\"undefined\",\"tauriKeys\":[],\"internalsKeys\":[\"plugins\"],\"hasElectron\":\"object\",\"hasGetCurrentWindow\":\"undefined\",\"location\":\"http://tauri.localhost/?wid=0&type=editor&udp=C%3A%5CUsers%5CLenovo%5CAppData%5CRoaming%5Ccom.markrust.app\"}",
+  "commands": [
+    {
+      "name": "ping",
+      "module": "lib",
+      "mode": "call",
+      "args": {},
+      "desc": "心跳检查",
+      "status": "PASS",
+      "value": "\"pong\"",
+      "reason": "",
+      "duration": 5,
+      "rawError": null
+    },
+    {
+      "name": "get_launch_file",
+      "module": "lib",
+      "mode": "call",
+      "args": {},
+      "desc": "获取启动文件参数",
+      "status": "PASS",
+      "value": "null",
+      "reason": "",
+      "duration": 5,
+      "rawError": null
+    },
+    {
+      "name": "fs_is_file",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "C:/Work/202607/MarkText优化/marktext-tauri/src-tauri/Cargo.toml"
+      },
+      "desc": "判断是否为文件",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 5,
+      "rawError": null
+    },
+    {
+      "name": "fs_is_directory",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "C:/Work/202607/MarkText优化/marktext-tauri"
+      },
+      "desc": "判断是否为目录",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 6,
+      "rawError": null
+    },
+    {
+      "name": "fs_path_exists",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "C:/Work/202607/MarkText优化/marktext-tauri/src-tauri/Cargo.toml"
+      },
+      "desc": "判断路径是否存在",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 6,
+      "rawError": null
+    },
+    {
+      "name": "fs_ensure_dir",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "确保目录存在(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `fs_ensure_dir`: command fs_ensure_dir missing required key path",
+      "duration": 5,
+      "rawError": "invalid args `path` for command `fs_ensure_dir`: command fs_ensure_dir missing required key path"
+    },
+    {
+      "name": "fs_empty_dir",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "清空目录(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `fs_empty_dir`: command fs_empty_dir missing required key path",
+      "duration": 6,
+      "rawError": "invalid args `path` for command `fs_empty_dir`: command fs_empty_dir missing required key path"
+    },
+    {
+      "name": "fs_copy",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "复制文件(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `src` for command `fs_copy`: command fs_copy missing required key src",
+      "duration": 4,
+      "rawError": "invalid args `src` for command `fs_copy`: command fs_copy missing required key src"
+    },
+    {
+      "name": "fs_move",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "移动文件(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `src` for command `fs_move`: command fs_move missing required key src",
+      "duration": 5,
+      "rawError": "invalid args `src` for command `fs_move`: command fs_move missing required key src"
+    },
+    {
+      "name": "fs_unlink",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "删除文件(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `fs_unlink`: command fs_unlink missing required key path",
+      "duration": 4,
+      "rawError": "invalid args `path` for command `fs_unlink`: command fs_unlink missing required key path"
+    },
+    {
+      "name": "fs_readdir",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "C:/Work/202607/MarkText优化/marktext-tauri/src-tauri/src/commands"
+      },
+      "desc": "列目录",
+      "status": "PASS",
+      "value": "[\"buffer.rs\",\"clipboard.rs\",\"dialog.rs\",\"encoding.rs\",\"fonts.rs\",\"fs.rs\",\"i18n.rs\",\"keyboard.rs\",\"menu.rs\",\"misc.rs\",\"mod.rs\",\"preferences.rs\",\"recent.rs\",\"ripgrep.rs\",\"secure.rs\",\"shell.rs\",\"spellche",
+      "reason": "",
+      "duration": 6,
+      "rawError": null
+    },
+    {
+      "name": "fs_list_tree",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "递归列目录(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `fs_list_tree`: command fs_list_tree missing required key path",
+      "duration": 4,
+      "rawError": "invalid args `path` for command `fs_list_tree`: command fs_list_tree missing required key path"
+    },
+    {
+      "name": "fs_read_file",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "C:/Work/202607/MarkText优化/marktext-tauri/src-tauri/Cargo.toml"
+      },
+      "desc": "读文件",
+      "status": "PASS",
+      "value": "\"[package]\\nname = \\\"markrust\\\"\\nversion = \\\"1.0.31\\\"\\ndescription = \\\"MarkRust — Markdown editor powered by Rust + Tauri 2\\\"\\nauthors = [\\\"Mr.Jin\\\"]\\nedition = \\\"2021\\\"\\nrust-version = \\\"1.77\\\"\\n\\n# ",
+      "reason": "",
+      "duration": 6,
+      "rawError": null
+    },
+    {
+      "name": "fs_read_markdown",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "C:/Work/202607/MarkText优化/marktext-tauri/src-tauri/Cargo.toml"
+      },
+      "desc": "读Markdown(返回{markdown})",
+      "status": "PASS",
+      "value": "{\"markdown\":\"[package]\\nname = \\\"markrust\\\"\\nversion = \\\"1.0.31\\\"\\ndescription = \\\"MarkRust — Markdown editor powered by Rust + Tauri 2\\\"\\nauthors = [\\\"Mr.Jin\\\"]\\nedition = \\\"2021\\\"\\nrust-version = \\\"",
+      "reason": "",
+      "duration": 6,
+      "rawError": null
+    },
+    {
+      "name": "image_auto_path",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "图片自动路径(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `pathname` for command `image_auto_path`: command image_auto_path missing required key pathname",
+      "duration": 5,
+      "rawError": "invalid args `pathname` for command `image_auto_path`: command image_auto_path missing required key pathname"
+    },
+    {
+      "name": "format_link_click",
+      "module": "shell",
+      "mode": "probe",
+      "desc": "格式化链接点击(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `args` for command `format_link_click`: command format_link_click missing required key args",
+      "duration": 4,
+      "rawError": "invalid args `args` for command `format_link_click`: command format_link_click missing required key args"
+    },
+    {
+      "name": "fs_write_file",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "写文件(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `fs_write_file`: command fs_write_file missing required key path",
+      "duration": 4,
+      "rawError": "invalid args `path` for command `fs_write_file`: command fs_write_file missing required key path"
+    },
+    {
+      "name": "fs_output_file",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "输出文件(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `fs_output_file`: command fs_output_file missing required key path",
+      "duration": 5,
+      "rawError": "invalid args `path` for command `fs_output_file`: command fs_output_file missing required key path"
+    },
+    {
+      "name": "markdown_save",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "保存Markdown(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `markdown_save`: command markdown_save missing required key path",
+      "duration": 5,
+      "rawError": "invalid args `path` for command `markdown_save`: command markdown_save missing required key path"
+    },
+    {
+      "name": "fs_stat",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "C:/Work/202607/MarkText优化/marktext-tauri/src-tauri/Cargo.toml"
+      },
+      "desc": "文件stat信息",
+      "status": "PASS",
+      "value": "{\"size\":1981,\"mtimeMs\":1784267650795,\"ctimeMs\":1782854522113,\"isFile\":true,\"isDirectory\":false,\"isSymbolicLink\":false}",
+      "reason": "",
+      "duration": 4,
+      "rawError": null
+    },
+    {
+      "name": "fs_is_executable",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "C:/Windows/System32/cmd.exe"
+      },
+      "desc": "判断可执行文件",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 6,
+      "rawError": null
+    },
+    {
+      "name": "fs_trash_item",
+      "module": "fs",
+      "mode": "probe",
+      "desc": "移至回收站(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `fs_trash_item`: command fs_trash_item missing required key path",
+      "duration": 3,
+      "rawError": "invalid args `path` for command `fs_trash_item`: command fs_trash_item missing required key path"
+    },
+    {
+      "name": "fs_is_image_path",
+      "module": "fs",
+      "mode": "call",
+      "args": {
+        "path": "test.png"
+      },
+      "desc": "判断图片路径",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 4,
+      "rawError": null
+    },
+    {
+      "name": "watch_file",
+      "module": "watcher",
+      "mode": "probe",
+      "desc": "监视文件(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `watch_file`: command watch_file missing required key path",
+      "duration": 5,
+      "rawError": "invalid args `path` for command `watch_file`: command watch_file missing required key path"
+    },
+    {
+      "name": "unwatch_file",
+      "module": "watcher",
+      "mode": "probe",
+      "desc": "取消监视(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `unwatch_file`: command unwatch_file missing required key path",
+      "duration": 3,
+      "rawError": "invalid args `path` for command `unwatch_file`: command unwatch_file missing required key path"
+    },
+    {
+      "name": "rg_start",
+      "module": "ripgrep",
+      "mode": "probe",
+      "desc": "启动搜索(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `req` for command `rg_start`: command rg_start missing required key req",
+      "duration": 4,
+      "rawError": "invalid args `req` for command `rg_start`: command rg_start missing required key req"
+    },
+    {
+      "name": "rg_cancel",
+      "module": "ripgrep",
+      "mode": "probe",
+      "desc": "取消搜索(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `searchId` for command `rg_cancel`: command rg_cancel missing required key searchId",
+      "duration": 4,
+      "rawError": "invalid args `searchId` for command `rg_cancel`: command rg_cancel missing required key searchId"
+    },
+    {
+      "name": "window_new_editor",
+      "module": "window",
+      "mode": "skip",
+      "reason": "零参数会创建新窗口",
+      "desc": "新建编辑器窗口",
+      "status": "SKIP",
+      "duration": 0
+    },
+    {
+      "name": "window_open_settings",
+      "module": "window",
+      "mode": "skip",
+      "reason": "零参数会打开设置窗口",
+      "desc": "打开设置窗口",
+      "status": "SKIP",
+      "duration": 0
+    },
+    {
+      "name": "window_close",
+      "module": "window",
+      "mode": "probe",
+      "desc": "关闭窗口(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `label` for command `window_close`: command window_close missing required key label",
+      "duration": 5,
+      "rawError": "invalid args `label` for command `window_close`: command window_close missing required key label"
+    },
+    {
+      "name": "window_is_maximized",
+      "module": "window",
+      "mode": "call",
+      "args": {
+        "label": "main"
+      },
+      "desc": "查询最大化",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 3,
+      "rawError": null
+    },
+    {
+      "name": "window_toggle_always_on_top",
+      "module": "window",
+      "mode": "probe",
+      "desc": "切换置顶(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `label` for command `window_toggle_always_on_top`: command window_toggle_always_on_top missing required key label",
+      "duration": 3,
+      "rawError": "invalid args `label` for command `window_toggle_always_on_top`: command window_toggle_always_on_top missing required key label"
+    },
+    {
+      "name": "window_set_title",
+      "module": "window",
+      "mode": "probe",
+      "desc": "设置标题(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `label` for command `window_set_title`: command window_set_title missing required key label",
+      "duration": 5,
+      "rawError": "invalid args `label` for command `window_set_title`: command window_set_title missing required key label"
+    },
+    {
+      "name": "dialog_open_file",
+      "module": "dialog",
+      "mode": "skip",
+      "reason": "blocking会弹窗阻塞",
+      "desc": "打开文件对话框",
+      "status": "SKIP",
+      "duration": 0
+    },
+    {
+      "name": "dialog_open_files",
+      "module": "dialog",
+      "mode": "skip",
+      "reason": "blocking会弹窗阻塞",
+      "desc": "多选文件对话框",
+      "status": "SKIP",
+      "duration": 0
+    },
+    {
+      "name": "dialog_save_file",
+      "module": "dialog",
+      "mode": "skip",
+      "reason": "blocking会弹窗阻塞",
+      "desc": "保存文件对话框",
+      "status": "SKIP",
+      "duration": 0
+    },
+    {
+      "name": "dialog_open_directory",
+      "module": "dialog",
+      "mode": "skip",
+      "reason": "blocking会弹窗阻塞",
+      "desc": "选择目录对话框",
+      "status": "SKIP",
+      "duration": 0
+    },
+    {
+      "name": "dialog_show_message",
+      "module": "dialog",
+      "mode": "probe",
+      "desc": "消息框(缺参探-必需参数缺失不会弹窗)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `title` for command `dialog_show_message`: command dialog_show_message missing required key title",
+      "duration": 3,
+      "rawError": "invalid args `title` for command `dialog_show_message`: command dialog_show_message missing required key title"
+    },
+    {
+      "name": "clipboard_read_text",
+      "module": "clipboard",
+      "mode": "call",
+      "args": {},
+      "desc": "读剪贴板文本",
+      "status": "FAIL",
+      "reason": "clipboard read_text: The native clipboard is not accessible due to being held by another party.",
+      "duration": 31,
+      "rawError": "clipboard read_text: The native clipboard is not accessible due to being held by another party."
+    },
+    {
+      "name": "clipboard_write_text",
+      "module": "clipboard",
+      "mode": "probe",
+      "desc": "写剪贴板文本(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `text` for command `clipboard_write_text`: command clipboard_write_text missing required key text",
+      "duration": 4,
+      "rawError": "invalid args `text` for command `clipboard_write_text`: command clipboard_write_text missing required key text"
+    },
+    {
+      "name": "clipboard_guess_file_path",
+      "module": "clipboard",
+      "mode": "probe",
+      "desc": "猜测文件路径(缺参探)",
+      "status": "PASS",
+      "value": "null",
+      "note": "空参调用成功(零参数命令或可选参数)",
+      "duration": 32,
+      "rawError": null
+    },
+    {
+      "name": "shell_open_external",
+      "module": "shell",
+      "mode": "probe",
+      "desc": "外部打开(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `url` for command `shell_open_external`: command shell_open_external missing required key url",
+      "duration": 4,
+      "rawError": "invalid args `url` for command `shell_open_external`: command shell_open_external missing required key url"
+    },
+    {
+      "name": "shell_open_path",
+      "module": "shell",
+      "mode": "probe",
+      "desc": "打开路径(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `shell_open_path`: command shell_open_path missing required key path",
+      "duration": 4,
+      "rawError": "invalid args `path` for command `shell_open_path`: command shell_open_path missing required key path"
+    },
+    {
+      "name": "shell_show_item",
+      "module": "shell",
+      "mode": "probe",
+      "desc": "在资源管理器中显示(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `path` for command `shell_show_item`: command shell_show_item missing required key path",
+      "duration": 3,
+      "rawError": "invalid args `path` for command `shell_show_item`: command shell_show_item missing required key path"
+    },
+    {
+      "name": "paths_is_image",
+      "module": "misc",
+      "mode": "call",
+      "args": {
+        "path": "test.png"
+      },
+      "desc": "判断图片",
+      "status": "PASS",
+      "value": "false",
+      "reason": "",
+      "duration": 4,
+      "rawError": null
+    },
+    {
+      "name": "paths_is_same",
+      "module": "misc",
+      "mode": "call",
+      "args": {
+        "pathA": "C:/Work/202607/MarkText优化/marktext-tauri/src-tauri/Cargo.toml",
+        "pathB": "C:/Work/202607/MarkText优化/marktext-tauri/src-tauri/Cargo.toml"
+      },
+      "desc": "判断同文件",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 7,
+      "rawError": null
+    },
+    {
+      "name": "cmd_exists",
+      "module": "misc",
+      "mode": "call",
+      "args": {
+        "command": "cmd"
+      },
+      "desc": "命令是否存在",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 25,
+      "rawError": null
+    },
+    {
+      "name": "boot_info_async",
+      "module": "misc",
+      "mode": "call",
+      "args": {},
+      "desc": "启动信息",
+      "status": "PASS",
+      "value": "{\"MARKDOWN_INCLUSIONS\":[\"*.markdown\",\"*.mdown\",\"*.mkdn\",\"*.md\",\"*.mkd\",\"*.mdwn\",\"*.mdtxt\",\"*.mdtext\",\"*.mdx\",\"*.text\",\"*.txt\"],\"arch\":\"x86_64\",\"isUpdatable\":false,\"paths\":{\"cwd\":\"C:\\\\Work\\\\202607\\\\Mar",
+      "reason": "",
+      "duration": 14,
+      "rawError": null
+    },
+    {
+      "name": "win_is_fullscreen",
+      "module": "misc",
+      "mode": "call",
+      "args": {
+        "label": "main"
+      },
+      "desc": "查询全屏状态",
+      "status": "PASS",
+      "value": "false",
+      "reason": "",
+      "duration": 4,
+      "rawError": null
+    },
+    {
+      "name": "ask_for_image_path",
+      "module": "misc",
+      "mode": "skip",
+      "reason": "blocking会弹窗阻塞",
+      "desc": "图片选择对话框",
+      "status": "SKIP",
+      "duration": 0
+    },
+    {
+      "name": "get_user_data_dir",
+      "module": "misc",
+      "mode": "call",
+      "args": {},
+      "desc": "用户数据目录",
+      "status": "PASS",
+      "value": "\"C:\\\\Users\\\\Lenovo\\\\AppData\\\\Roaming\\\\com.markrust.app\"",
+      "reason": "",
+      "duration": 4,
+      "rawError": null
+    },
+    {
+      "name": "fonts_list",
+      "module": "fonts",
+      "mode": "call",
+      "args": {},
+      "desc": "列出字体",
+      "status": "PASS",
+      "value": "[\"Agency FB\",\"Agency FB Bold\",\"Alef Bold\",\"Alef Regular\",\"Algerian\",\"Amiri Bold\",\"Amiri Bold Italic\",\"Amiri Italic\",\"Amiri Quran Regular\",\"Amiri Regular\",\"Arial\",\"Arial Black\",\"Arial Bold\",\"Arial Bold",
+      "reason": "",
+      "duration": 1853,
+      "rawError": null
+    },
+    {
+      "name": "i18n_is_supported",
+      "module": "i18n",
+      "mode": "call",
+      "args": {
+        "locale": "en"
+      },
+      "desc": "i18n是否支持(locale=en)",
+      "status": "PASS",
+      "value": "true",
+      "reason": "",
+      "duration": 6,
+      "rawError": null
+    },
+    {
+      "name": "i18n_load",
+      "module": "i18n",
+      "mode": "probe",
+      "desc": "加载i18n(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `locale` for command `i18n_load`: command i18n_load missing required key locale",
+      "duration": 7,
+      "rawError": "invalid args `locale` for command `i18n_load`: command i18n_load missing required key locale"
+    },
+    {
+      "name": "i18n_supported",
+      "module": "i18n",
+      "mode": "call",
+      "args": {},
+      "desc": "支持的i18n列表",
+      "status": "PASS",
+      "value": "[\"en\",\"zh-CN\",\"zh-TW\",\"es\",\"fr\",\"de\",\"ja\",\"ko\",\"pt\",\"tr\"]",
+      "reason": "",
+      "duration": 9,
+      "rawError": null
+    },
+    {
+      "name": "keybinding_get_keyboard_info",
+      "module": "keyboard",
+      "mode": "call",
+      "args": {},
+      "desc": "键盘信息",
+      "status": "PASS",
+      "value": "{\"keymap\":{},\"layout\":{\"id\":\"00000409\",\"isComposing\":false,\"name\":\"US\"}}",
+      "reason": "",
+      "duration": 7,
+      "rawError": null
+    },
+    {
+      "name": "keybinding_dump_keyboard_info",
+      "module": "keyboard",
+      "mode": "call",
+      "args": {},
+      "desc": "键盘详细信息",
+      "status": "PASS",
+      "value": "null",
+      "reason": "",
+      "duration": 476,
+      "rawError": null
+    },
+    {
+      "name": "get_keybindings",
+      "module": "keyboard",
+      "mode": "call",
+      "args": {},
+      "desc": "快捷键列表",
+      "status": "PASS",
+      "value": "{\"edit.copy\":\"Ctrl+C\",\"edit.copy-as-html\":\"\",\"edit.copy-as-rich\":\"Ctrl+Shift+C\",\"edit.create-paragraph\":\"Ctrl+Shift+N\",\"edit.cut\":\"Ctrl+X\",\"edit.delete-paragraph\":\"Ctrl+Shift+D\",\"edit.duplicate\":\"Ctrl",
+      "reason": "",
+      "duration": 8,
+      "rawError": null
+    },
+    {
+      "name": "spellchecker_set_enabled",
+      "module": "spellchecker",
+      "mode": "probe",
+      "desc": "启用拼写检查(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `enabled` for command `spellchecker_set_enabled`: command spellchecker_set_enabled missing required key enabled",
+      "duration": 7,
+      "rawError": "invalid args `enabled` for command `spellchecker_set_enabled`: command spellchecker_set_enabled missing required key enabled"
+    },
+    {
+      "name": "spellchecker_switch_language",
+      "module": "spellchecker",
+      "mode": "probe",
+      "desc": "切换语言(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `lang` for command `spellchecker_switch_language`: command spellchecker_switch_language missing required key lang",
+      "duration": 7,
+      "rawError": "invalid args `lang` for command `spellchecker_switch_language`: command spellchecker_switch_language missing required key lang"
+    },
+    {
+      "name": "spellchecker_get_available_dictionaries",
+      "module": "spellchecker",
+      "mode": "call",
+      "args": {},
+      "desc": "可用字典列表",
+      "status": "PASS",
+      "value": "[\"en-US\"]",
+      "reason": "",
+      "duration": 5,
+      "rawError": null
+    },
+    {
+      "name": "spellchecker_remove_word",
+      "module": "spellchecker",
+      "mode": "probe",
+      "desc": "移除单词(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `word` for command `spellchecker_remove_word`: command spellchecker_remove_word missing required key word",
+      "duration": 5,
+      "rawError": "invalid args `word` for command `spellchecker_remove_word`: command spellchecker_remove_word missing required key word"
+    },
+    {
+      "name": "spellchecker_get_custom_dictionary_words",
+      "module": "spellchecker",
+      "mode": "call",
+      "args": {},
+      "desc": "自定义字典单词",
+      "status": "PASS",
+      "value": "[]",
+      "reason": "",
+      "duration": 8,
+      "rawError": null
+    },
+    {
+      "name": "uploader_upload",
+      "module": "uploader",
+      "mode": "probe",
+      "desc": "上传图片(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `req` for command `uploader_upload`: command uploader_upload missing required key req",
+      "duration": 6,
+      "rawError": "invalid args `req` for command `uploader_upload`: command uploader_upload missing required key req"
+    },
+    {
+      "name": "secure_get_password",
+      "module": "secure",
+      "mode": "probe",
+      "desc": "获取密码(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `key` for command `secure_get_password`: command secure_get_password missing required key key",
+      "duration": 7,
+      "rawError": "invalid args `key` for command `secure_get_password`: command secure_get_password missing required key key"
+    },
+    {
+      "name": "secure_set_password",
+      "module": "secure",
+      "mode": "probe",
+      "desc": "设置密码(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `key` for command `secure_set_password`: command secure_set_password missing required key key",
+      "duration": 4,
+      "rawError": "invalid args `key` for command `secure_set_password`: command secure_set_password missing required key key"
+    },
+    {
+      "name": "secure_delete_password",
+      "module": "secure",
+      "mode": "probe",
+      "desc": "删除密码(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `key` for command `secure_delete_password`: command secure_delete_password missing required key key",
+      "duration": 5,
+      "rawError": "invalid args `key` for command `secure_delete_password`: command secure_delete_password missing required key key"
+    },
+    {
+      "name": "preferences_get_all",
+      "module": "preferences",
+      "mode": "call",
+      "args": {},
+      "desc": "获取所有偏好设置",
+      "status": "PASS",
+      "value": "{\"autoCheck\":false,\"autoGuessEncoding\":true,\"autoNormalizeLineEndings\":false,\"autoPairBracket\":true,\"autoPairMarkdownSyntax\":true,\"autoPairQuote\":true,\"autoSave\":false,\"autoSaveDelay\":5000,\"bulletList",
+      "reason": "",
+      "duration": 7,
+      "rawError": null
+    },
+    {
+      "name": "preferences_set",
+      "module": "preferences",
+      "mode": "probe",
+      "desc": "设置偏好(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `partial` for command `preferences_set`: command preferences_set missing required key partial",
+      "duration": 5,
+      "rawError": "invalid args `partial` for command `preferences_set`: command preferences_set missing required key partial"
+    },
+    {
+      "name": "preferences_get",
+      "module": "preferences",
+      "mode": "probe",
+      "desc": "获取偏好(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `key` for command `preferences_get`: command preferences_get missing required key key",
+      "duration": 4,
+      "rawError": "invalid args `key` for command `preferences_get`: command preferences_get missing required key key"
+    },
+    {
+      "name": "preferences_reset",
+      "module": "preferences",
+      "mode": "probe",
+      "desc": "重置偏好(缺参探)",
+      "status": "PASS",
+      "value": "{\"autoCheck\":false,\"autoGuessEncoding\":true,\"autoNormalizeLineEndings\":false,\"autoPairBracket\":true,\"autoPairMarkdownSyntax\":true,\"autoPairQuote\":true,\"autoSave\":false,\"autoSaveDelay\":5000,\"bulletList",
+      "note": "空参调用成功(零参数命令或可选参数)",
+      "duration": 7,
+      "rawError": null
+    },
+    {
+      "name": "preferences_get_schema",
+      "module": "preferences",
+      "mode": "call",
+      "args": {},
+      "desc": "偏好schema",
+      "status": "PASS",
+      "value": "{\"autoCheck\":{\"default\":false,\"description\":\"Editor--Whether to automatically check related task.\",\"type\":\"boolean\"},\"autoGuessEncoding\":{\"default\":true,\"description\":\"Editor--Try to automatically gue",
+      "reason": "",
+      "duration": 7,
+      "rawError": null
+    },
+    {
+      "name": "updater_check_latest",
+      "module": "updater",
+      "mode": "probe",
+      "desc": "检查更新(缺参探,需owner/repo/current_version)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `owner` for command `updater_check_latest`: command updater_check_latest missing required key owner",
+      "duration": 6,
+      "rawError": "invalid args `owner` for command `updater_check_latest`: command updater_check_latest missing required key owner"
+    },
+    {
+      "name": "buffer_save",
+      "module": "buffer",
+      "mode": "probe",
+      "desc": "保存buffer(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `state` for command `buffer_save`: command buffer_save missing required key state",
+      "duration": 5,
+      "rawError": "invalid args `state` for command `buffer_save`: command buffer_save missing required key state"
+    },
+    {
+      "name": "buffer_load",
+      "module": "buffer",
+      "mode": "probe",
+      "desc": "加载buffer(缺参探)",
+      "status": "PASS",
+      "value": "{\"currentFileId\":\"mt-0\",\"layout\":{\"rightColumn\":\"toc\",\"showSideBar\":true,\"showTabBar\":true,\"sideBarWidth\":372},\"project\":{\"rootDirectory\":\"\"},\"restoreWarnings\":[],\"tabs\":[{\"adjustLineEndingOnSave\":fal",
+      "note": "空参调用成功(零参数命令或可选参数)",
+      "duration": 13,
+      "rawError": null
+    },
+    {
+      "name": "recent_add",
+      "module": "recent",
+      "mode": "probe",
+      "desc": "添加最近文档(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `filePath` for command `recent_add`: command recent_add missing required key filePath",
+      "duration": 5,
+      "rawError": "invalid args `filePath` for command `recent_add`: command recent_add missing required key filePath"
+    },
+    {
+      "name": "recent_get",
+      "module": "recent",
+      "mode": "call",
+      "args": {},
+      "desc": "获取最近文档",
+      "status": "PASS",
+      "value": "[]",
+      "reason": "",
+      "duration": 6,
+      "rawError": null
+    },
+    {
+      "name": "recent_clear",
+      "module": "recent",
+      "mode": "call",
+      "args": {},
+      "desc": "清空最近文档",
+      "status": "PASS",
+      "value": "[]",
+      "reason": "",
+      "duration": 102,
+      "rawError": null
+    },
+    {
+      "name": "menu_set_checked",
+      "module": "menu",
+      "mode": "probe",
+      "desc": "设置菜单勾选(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `id` for command `menu_set_checked`: command menu_set_checked missing required key id",
+      "duration": 9,
+      "rawError": "invalid args `id` for command `menu_set_checked`: command menu_set_checked missing required key id"
+    },
+    {
+      "name": "menu_set_enabled",
+      "module": "menu",
+      "mode": "probe",
+      "desc": "设置菜单启用(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `id` for command `menu_set_enabled`: command menu_set_enabled missing required key id",
+      "duration": 10,
+      "rawError": "invalid args `id` for command `menu_set_enabled`: command menu_set_enabled missing required key id"
+    },
+    {
+      "name": "menu_rebuild_locale",
+      "module": "menu",
+      "mode": "probe",
+      "desc": "重建菜单语言(缺参探)",
+      "status": "PASS",
+      "reason": "参数错误(证明已注册): invalid args `locale` for command `menu_rebuild_locale`: command menu_rebuild_locale missing required key locale",
+      "duration": 7,
+      "rawError": "invalid args `locale` for command `menu_rebuild_locale`: command menu_rebuild_locale missing required key locale"
+    }
+  ],
+  "windowApis": [
+    {
+      "name": "plugin:window|minimize",
+      "api": "minimize",
+      "requiredPermission": "core:window:allow-minimize",
+      "desc": "最小化窗口",
+      "expr": "(async () => {\n      try {\n        if (!window.__TAURI_INTERNALS__ || typeof window.__TAURI_INTERNALS__.invoke !== 'function')\n          return { ok: false, error: '__TAURI_INTERNALS__.invoke not available' };\n        await window.__TAURI_INTERNALS__.invoke('plugin:window|minimize', { label: '__audit_fake__' });\n        return { ok: true, value: 'unexpected success (should have failed with bad label)' };\n      } catch(e) {\n        const err = String(e?.message || e);\n        if (err.includes('not allowed') || err.includes('capability') || err.includes('permission') || err.includes('acl'))\n          return { ok: false, error: '权限被拒: ' + err.substring(0, 120) };\n        // Window not found / invalid label means API + permission are fine\n        if (err.includes('not found') || err.includes('no such') || err.includes('Invalid') || err.includes('invalid') || err.includes('Window'))\n          return { ok: true, value: 'API+权限正常(假label触发预期错误): ' + err.substring(0, 80) };\n        return { ok: false, error: err.substring(0, 150) };\n      }\n    })()",
+      "status": "PASS",
+      "value": "API+权限正常(假label触发预期错误): window not found",
+      "duration": 0
+    },
+    {
+      "name": "plugin:window|set_fullscreen",
+      "api": "setFullscreen",
+      "requiredPermission": "core:window:allow-set-fullscreen",
+      "desc": "全屏切换",
+      "expr": "(async () => {\n      try {\n        if (!window.__TAURI_INTERNALS__ || typeof window.__TAURI_INTERNALS__.invoke !== 'function')\n          return { ok: false, error: '__TAURI_INTERNALS__.invoke not available' };\n        await window.__TAURI_INTERNALS__.invoke('plugin:window|set_fullscreen', { label: '__audit_fake__', value: true });\n        return { ok: true, value: 'unexpected success (should have failed with bad label)' };\n      } catch(e) {\n        const err = String(e?.message || e);\n        if (err.includes('not allowed') || err.includes('capability') || err.includes('permission') || err.includes('acl'))\n          return { ok: false, error: '权限被拒: ' + err.substring(0, 120) };\n        if (err.includes('not found') || err.includes('no such') || err.includes('Invalid') || err.includes('invalid') || err.includes('Window'))\n          return { ok: true, value: 'API+权限正常(假label触发预期错误): ' + err.substring(0, 80) };\n        return { ok: false, error: err.substring(0, 150) };\n      }\n    })()",
+      "status": "PASS",
+      "value": "API+权限正常(假label触发预期错误): window not found",
+      "duration": 0
+    },
+    {
+      "name": "plugin:window|set_always_on_top",
+      "api": "setAlwaysOnTop",
+      "requiredPermission": "core:window:allow-set-always-on-top",
+      "desc": "置顶切换(已有权限)",
+      "expr": "(async () => {\n      try {\n        if (!window.__TAURI_INTERNALS__ || typeof window.__TAURI_INTERNALS__.invoke !== 'function')\n          return { ok: false, error: '__TAURI_INTERNALS__.invoke not available' };\n        await window.__TAURI_INTERNALS__.invoke('plugin:window|set_always_on_top', { label: '__audit_fake__', value: true });\n        return { ok: true, value: 'unexpected success (should have failed with bad label)' };\n      } catch(e) {\n        const err = String(e?.message || e);\n        if (err.includes('not allowed') || err.includes('capability') || err.includes('permission') || err.includes('acl'))\n          return { ok: false, error: '权限被拒: ' + err.substring(0, 120) };\n        if (err.includes('not found') || err.includes('no such') || err.includes('Invalid') || err.includes('invalid') || err.includes('Window'))\n          return { ok: true, value: 'API+权限正常(假label触发预期错误): ' + err.substring(0, 80) };\n        return { ok: false, error: err.substring(0, 150) };\n      }\n    })()",
+      "status": "PASS",
+      "value": "API+权限正常(假label触发预期错误): window not found",
+      "duration": 0
+    }
+  ],
+  "capabilities": [
+    {
+      "perm": "core:window:allow-minimize",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-set-fullscreen",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-is-fullscreen",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-set-always-on-top",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-is-always-on-top",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-close",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-is-maximized",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-set-title",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-show",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "core:window:allow-set-focus",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "shell:allow-open",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "dialog:default",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "clipboard-manager:allow-read-text",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    },
+    {
+      "perm": "clipboard-manager:allow-write-text",
+      "status": "PRESENT",
+      "impact": "",
+      "severity": "OK"
+    }
+  ],
+  "summary": {
+    "total": 81,
+    "passed": 73,
+    "failed": 1,
+    "skipped": 7,
+    "notRegistered": 0,
+    "windowPass": 3,
+    "windowFail": 0,
+    "capsCritical": 0,
+    "capsHigh": 0
+  }
+}

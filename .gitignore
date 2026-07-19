@@ -1,0 +1,54 @@
+# 依赖
+node_modules/
+
+# 前端构建产物
+dist/
+
+# Rust 构建产物
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Tauri 自动生成
+src-tauri/gen/
+
+# 临时与调试文件（.temp/ 内含调试脚本和日志，不纳入仓库）
+.temp/
+.reasonix/
+
+# Playwright/测试运行产物
+test-results/
+playwright-report/
+blob-report/
+
+# 构建日志和临时输出
+*.log
+*.log.err
+*.err.log
+*.out.log
+*.stderr
+*.stdout
+*.pid
+build.log
+.temp-dist-stderr.log
+.temp-dist-stdout.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 系统文件
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# AIGC 水印（如生成）
+*aigc*

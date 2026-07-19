@@ -1,0 +1,69 @@
+[package]
+name = "markrust"
+version = "1.0.31"
+description = "MarkRust — Markdown editor powered by Rust + Tauri 2"
+authors = ["Mr.Jin"]
+edition = "2021"
+rust-version = "1.77"
+
+# Tauri 2 应用必须的 library crate（app crate 不能同时是 bin + lib）
+[lib]
+name = "markrust_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Phase 1: 文件 IO + 编码 + 监听 + ripgrep
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+thiserror = "1"
+notify = { version = "6", features = ["serde"] }
+notify-debouncer-mini = "0.4"
+chardetng = "0.1"
+encoding_rs = "0.8"
+trash = "5"
+walkdir = "2"
+glob = "0.3"
+which = "7"
+log = "0.4"
+env_logger = "0.11"
+
+# Phase 2: 窗口 + 菜单 + 对话框
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Phase 3: 剪贴板（shell/dialog 已在 Phase 0/2 引入）
+tauri-plugin-clipboard-manager = "2"
+
+# Phase 4: 原生模块替换（keytar → keyring）
+keyring = "3"
+
+# Phase 5: 偏好持久化 + 更新检查
+reqwest = { version = "0.12", features = ["json"] }
+semver = "1"
+
+[features]
+# Release builds MUST enable this feature so that tauri embeds frontend assets
+# (frontendDist) and loads them via the custom protocol, instead of connecting
+# to devUrl (localhost:1420). Without it, `cargo build --release` silently
+# falls back to dev mode and the exe cannot start without a dev server.
+#
+# Usage: cargo build --release --features embed-frontend
+# (npx tauri build / npx tauri build --no-bundle enables this automatically.)
+embed-frontend = ["tauri/custom-protocol"]
+
+# Only in release mode hide the console window (standard for Windows desktop apps)
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
