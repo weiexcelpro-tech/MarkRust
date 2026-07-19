@@ -1,13 +1,4 @@
----
-AIGC:
-  ContentProducer: '001191110102MAD55U9H0F10002'
-  ContentPropagator: '001191110102MAD55U9H0F10002'
-  Label: '1'
-  ProduceID: 'bf3cbfad-92f9-45bb-b6fa-c056c08dc7c0'
-  PropagateID: 'bf3cbfad-92f9-45bb-b6fa-c056c08dc7c0'
-  ReservedCode1: '47d377ac-6908-4501-81b3-592b9c3b54b4'
-  ReservedCode2: '47d377ac-6908-4501-81b3-592b9c3b54b4'
----
+
 
 # markrust
 
