@@ -88,6 +88,8 @@ export const ja = {
         'Paste web image or local image path. Use': 'Web画像またはローカルパスを貼り付け。モードを切替',
         'simple mode': 'シンプルモード',
         'full mode': 'フルモード',
+        'Insert as path': 'パスとして挿入',
+        'Insert as Base64': 'Base64 として挿入',
         // preview block
         'Loading...': 'ロード中...',
         'Invalid Diagram Code': 'グラフのレンダリングが失敗しました',

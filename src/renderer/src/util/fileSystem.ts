@@ -67,6 +67,10 @@ export const moveImageToFolder = async(
   isRelative = false,
   currentPathname: string | null = null
 ): Promise<string> => {
+  // Defensive: empty outputDir would cause ensureDir('') to throw on Windows.
+  if (!outputDir || outputDir.trim() === '') {
+    throw new Error('Image folder path is not configured. Please set it in Preferences → Image → Image Folder Path.')
+  }
   await window.fileUtils.ensureDir(outputDir)
   const toResult = (absolutePath: string) =>
     isRelative && currentPathname

@@ -279,7 +279,7 @@
     "style": {
       "label": "스타일",
       "overwriteThemeFont": "테마 글꼴 설정 덮어쓰기",
-      "fontFamily": "글꼴 패밀리:",
+      "fontFamily": "글꼴 패밀리",
       "fontSize": "글꼴 크기",
       "lineHeight": "줄 높이"
     },
@@ -335,7 +335,8 @@
         "default": "GitHub (기본값)",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "로딩 중..."
   },
   "recent": {
     "noTabsOpen": "열린 탭이 없습니다.",

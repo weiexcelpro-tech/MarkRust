@@ -1,12 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { injectTauriMock } from './mock-tauri'
+import { injectTauriMock, bootstrapApp } from './mock-tauri'
 
 test.beforeEach(async ({ page }) => {
   await injectTauriMock(page)
-  await page.goto('/')
-  await expect(page.locator('.editor-container')).toBeVisible({ timeout: 15000 })
-  await expect(page.locator('.editor-tabs .tabs-container li')).toHaveCount(1, { timeout: 10000 })
-  await page.waitForTimeout(500)
+  await bootstrapApp(page)
 })
 
 test.describe('Sidebar 面板切换', () => {

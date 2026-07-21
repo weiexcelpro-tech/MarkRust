@@ -88,6 +88,8 @@ export const zhTW = {
         'Paste web image or local image path. Use': '貼上網路圖片或本機路徑。切換模式',
         'simple mode': '精簡模式',
         'full mode': '完整模式',
+        'Insert as path': '以路徑插入',
+        'Insert as Base64': '以 Base64 插入',
         // preview block
         'Loading...': '載入中...',
         'Invalid Diagram Code': '圖表渲染失敗',

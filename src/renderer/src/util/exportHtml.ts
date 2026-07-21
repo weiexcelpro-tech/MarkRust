@@ -14,6 +14,7 @@ import { MarkdownToHtml } from '@muyajs/core'
 import { sanitize, EXPORT_DOMPURIFY_CONFIG } from './dompurify'
 import { resolveLocalImageSrc } from './resolveImageSrc'
 import { resolveLocalLinkHref } from './resolveLinkHref'
+import { embedImagesAsBase64 } from './embedImage'
 
 export interface HeaderFooterPart {
   type?: number
@@ -33,6 +34,14 @@ export interface ExportStyledHtmlOptions {
   headerFooterStyled?: boolean
   /** Editor text direction ('ltr' | 'rtl' | 'auto'); set on the exported <html>. */
   dir?: string
+  /** v2.0: 当前文件路径，用于 base64 内嵌时解析相对图片路径 */
+  pathname?: string
+  /** v2.0: 是否将本地图片内嵌为 base64 data URI（默认 false，保持 v1.0 行为） */
+  embedImages?: boolean
+  /** v2.0: 图片缩放模式（与 DOCX 共享 F2 逻辑） */
+  imageResizeMode?: 'original' | 'auto'
+  /** v2.0: 自动缩放最大宽度 */
+  imageMaxWidth?: number
 }
 
 // Ported verbatim from legacy muyajs `headerFooterStyle.css` so the page
@@ -163,7 +172,18 @@ export const exportStyledHTML = async(
   markdown: string,
   options: ExportStyledHtmlOptions = {}
 ): Promise<string> => {
-  const { title = '', toc = '', header, footer, headerFooterStyled, dir } = options
+  const {
+    title = '',
+    toc = '',
+    header,
+    footer,
+    headerFooterStyled,
+    dir,
+    pathname = '',
+    embedImages = false,
+    imageResizeMode = 'auto',
+    imageMaxWidth = 1024
+  } = options
   let { extraCss = '' } = options
 
   // The header/footer page table needs its own stylesheet — fold it into
@@ -220,5 +240,19 @@ export const exportStyledHTML = async(
   }
 
   // Re-emit the engine document shell with the (possibly augmented) body.
-  return fullDoc.replace(/<body>[\s\S]*<\/body>/, `<body>\n  ${bodyHtml}\n</body>`)
+  let result = fullDoc.replace(/<body>[\s\S]*<\/body>/, `<body>\n  ${bodyHtml}\n</body>`)
+
+  // v2.0 F3: 若启用 base64 内嵌，将所有本地图片转为 data URI（PRD AC-16/AC-17）
+  if (embedImages) {
+    const embedResult = await embedImagesAsBase64(result, pathname, {
+      mode: imageResizeMode,
+      maxWidth: imageMaxWidth
+    })
+    result = embedResult.html
+    if (embedResult.failed > 0) {
+      console.warn(`[exportHtml] ${embedResult.failed} 张图片内嵌失败，保留原 src`)
+    }
+  }
+
+  return result
 }

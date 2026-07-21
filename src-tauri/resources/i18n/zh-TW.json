@@ -279,7 +279,7 @@
     "style": {
       "label": "樣式",
       "overwriteThemeFont": "覆寫主題字型設定",
-      "fontFamily": "字型系列：",
+      "fontFamily": "字型系列",
       "fontSize": "字型大小",
       "lineHeight": "行高"
     },
@@ -335,7 +335,8 @@
         "default": "GitHub（預設）",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "載入中..."
   },
   "recent": {
     "noTabsOpen": "您沒有開啟的標籤頁。",

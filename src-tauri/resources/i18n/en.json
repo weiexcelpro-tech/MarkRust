@@ -21,6 +21,7 @@
       "export": "Export",
       "exportHtml": "Export as HTML",
       "exportPdf": "Export as PDF",
+      "exportDocx": "Export as DOCX",
       "import": "Import",
       "print": "Print",
       "closeTab": "Close Tab",
@@ -279,7 +280,7 @@
     "style": {
       "label": "Style",
       "overwriteThemeFont": "Overwrite theme font settings",
-      "fontFamily": "Font family:",
+      "fontFamily": "Font family",
       "fontSize": "Font size",
       "lineHeight": "Line height"
     },
@@ -335,7 +336,8 @@
         "default": "GitHub (Default)",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "Loading..."
   },
   "recent": {
     "noTabsOpen": "You have no tabs open.",
@@ -758,6 +760,7 @@
       "importFile": "Import File",
       "exportFile": "Export File",
       "exportFilePdf": "Export as PDF",
+      "exportFileDocx": "Export as DOCX",
       "zoom": "Zoom",
       "checkUpdate": "Check for Updates"
     },

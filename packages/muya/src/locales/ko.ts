@@ -88,6 +88,8 @@ export const ko = {
         'Paste web image or local image path. Use': '웹 이미지 또는 로컬 경로를 붙여넣기. 모드 전환',
         'simple mode': '간단 모드',
         'full mode': '전체 모드',
+        'Insert as path': '경로로 삽입',
+        'Insert as Base64': 'Base64로 삽입',
         // preview block
         'Loading...': '로딩 중...',
         'Invalid Diagram Code': '잘못된 다이어그램 코드',

@@ -1,14 +1,11 @@
 import { test, expect, type Page } from '@playwright/test'
-import { injectTauriMock, startRecordingInvokes, getRecordedInvokes } from './mock-tauri'
+import { injectTauriMock, bootstrapApp, startRecordingInvokes, getRecordedInvokes } from './mock-tauri'
 
 const MARKDOWN_CONTENT = '# Loaded Document\n\nThis was loaded from a file.\n\n- apple\n- banana\n'
 const FILE_PATH = 'C:\\docs\\loaded.md'
 
 async function waitForApp(page: Page): Promise<void> {
-  await page.goto('/')
-  await expect(page.locator('.editor-container')).toBeVisible({ timeout: 15000 })
-  await expect(page.locator('.editor-tabs .tabs-container li')).toHaveCount(1, { timeout: 10000 })
-  await page.waitForTimeout(500)
+  await bootstrapApp(page)
 }
 
 async function sendIpc(page: Page, channel: string, ...args: unknown[]): Promise<void> {

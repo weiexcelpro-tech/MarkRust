@@ -109,6 +109,14 @@ export interface PreferencesState {
 
   watcherUsePolling: boolean
 
+  // ----- Export (v2.0) -----
+  exportImageEmbed: 'embed' | 'reference'
+  exportImageResize: 'original' | 'auto'
+  exportImageMaxWidth: number
+  exportShowConfigDialog: boolean
+  docxPageSize: 'A4' | 'Letter'
+  docxPageMargin: 'normal' | 'narrow' | 'wide'
+
   // ----- Edit modes (per-window, not persisted) -----
   typewriter: boolean
   focus: boolean
@@ -177,7 +185,7 @@ export const usePreferencesStore = defineStore('preferences', {
     trimTrailingNewline: 2,
     textDirection: 'ltr',
     hideQuickInsertHint: false,
-    imageInsertAction: 'folder',
+    imageInsertAction: 'path',
     imagePreferRelativeDirectory: false,
     imageRelativeDirectoryBase: 'file',
     imageRelativeDirectoryName: 'assets',
@@ -229,6 +237,14 @@ export const usePreferencesStore = defineStore('preferences', {
     typewriter: false, // typewriter mode
     focus: false,
     sourceCode: false, // source code mode
+
+    // Export (v2.0)
+    exportImageEmbed: 'embed',
+    exportImageResize: 'auto',
+    exportImageMaxWidth: 1024,
+    exportShowConfigDialog: true,
+    docxPageSize: 'A4',
+    docxPageMargin: 'normal',
 
     // user configration
     imageFolderPath: '',

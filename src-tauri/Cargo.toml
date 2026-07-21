@@ -1,6 +1,6 @@
 [package]
 name = "markrust"
-version = "1.0.31"
+version = "1.1.0"
 description = "MarkRust — Markdown editor powered by Rust + Tauri 2"
 authors = ["Mr.Jin"]
 edition = "2021"
@@ -15,7 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
@@ -49,6 +49,12 @@ keyring = "3"
 # Phase 5: 偏好持久化 + 更新检查
 reqwest = { version = "0.12", features = ["json"] }
 semver = "1"
+
+# v2.0: DOCX 导出 + 图片处理
+pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
+docx-rs = "0.4"
+base64 = "0.22"
+image = "0.25"
 
 [features]
 # Release builds MUST enable this feature so that tauri embeds frontend assets

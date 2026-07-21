@@ -15,7 +15,8 @@ import { ImagePathPicker } from '../imagePicker';
 import './index.css';
 
 /**
- * Image state interface containing source, alt text and title
+ * Image state interface containing source, alt text, title
+ * and the insert mode (path reference vs embedded base64 data URI).
  */
 interface IState {
     /** Image source URL or file path */
@@ -24,6 +25,19 @@ interface IState {
     alt: string;
     /** Image title */
     title: string;
+    /**
+     * How the image should be inserted into the markdown source:
+     *
+     * - `'path'` (default): keep as a path/URL reference — the embedder's
+     *   `imageAction` runs its normal upload/copy-to-folder/keep-path flow.
+     * - `'base64'`: embed the image as a `data:` URL directly — the embedder
+     *   converts the local file (or already-encoded bitmap) to a base64 data
+     *   URI and writes that URI as the final src.
+     *
+     * Pasted images pass `'base64'` by default per the product requirement; the
+     * image-edit tool starts at `'path'` and lets the user pick per insert.
+     */
+    insertMode: 'path' | 'base64';
 }
 
 /**
@@ -31,7 +45,7 @@ interface IState {
  */
 type Options = {
     /** Custom image path picker function (one-shot native file dialog) */
-    imagePathPicker?: () => Promise<string>;
+    imagePathPicker?: () => Promise<string | null>;
     /**
      * Local image path autocomplete hook. Given the current src input value,
      * returns a list of path suggestions to show in the floating
@@ -88,6 +102,7 @@ export class ImageEditTool extends BaseFloat {
         alt: '',
         src: '',
         title: '',
+        insertMode: 'path',
     };
 
     /** Active tab: file picker ("select") or link/path input ("link") */
@@ -143,12 +158,30 @@ export class ImageEditTool extends BaseFloat {
     }
 
     /**
-     * Normalize file protocol in image source
-     * Removes file:// or file:/// prefix for local paths
+     * Normalize file/asset protocol in image source
+     * Removes `file://`, `file:///`, `asset://localhost/`, or
+     * `http://asset.localhost/` prefix for local paths
      */
     private _normalizeFileProtocol() {
         const { src } = this._state;
-        if (!src || !/^file:\/\//.test(src))
+        if (!src)
+            return;
+
+        // Tauri asset protocol (macOS/Linux): `asset://localhost/<encoded-path>`
+        const assetMatch = /^asset:\/\/localhost\//i.exec(src);
+        if (assetMatch) {
+            this._state.src = decodeURIComponent(src.substring(assetMatch[0].length));
+            return;
+        }
+
+        // Tauri asset protocol (Windows): `http://asset.localhost/<encoded-path>`
+        const assetHttpMatch = /^http:\/\/asset\.localhost\//i.exec(src);
+        if (assetHttpMatch) {
+            this._state.src = decodeURIComponent(src.substring(assetHttpMatch[0].length));
+            return;
+        }
+
+        if (!/^file:\/\//.test(src))
             return;
 
         const protocolLen = isWin && /^file:\/\/\//.test(src)
@@ -174,10 +207,12 @@ export class ImageEditTool extends BaseFloat {
 
     /**
      * Handle input change for an editable image field (src / alt / title).
+     * `insertMode` is intentionally excluded — it is toggled via the radio
+     * change handler in `_renderInsertMode`, never through this input handler.
      * @param event - Input event
      * @param type - Which image field the input edits
      */
-    private _inputHandler(event: Event, type: keyof IState) {
+    private _inputHandler(event: Event, type: 'src' | 'alt' | 'title') {
         if (!isHTMLInputElement(event.target))
             return;
         this._state[type] = event.target.value;
@@ -350,27 +385,40 @@ export class ImageEditTool extends BaseFloat {
     /**
      * Replace image asynchronously
      * Handles two scenarios:
-     * 1. Direct replacement: when src is a URL or no imageAction provided
-     * 2. Upload flow: when src is a local path and imageAction is available
+     * 1. Direct replacement: when src is a URL with `path` mode, or no
+     *    `imageAction` is provided — the src is written verbatim.
+     * 2. Upload/embed flow: when `insertMode` is `'base64'`, or `'path'` with a
+     *    local src and `imageAction` is available — `imageAction` resolves to
+     *    the final src (path after upload/copy, or a `data:` URI for base64).
      * @param param - Image state object
      * @param param.alt - Image alt text
      * @param param.src - Image source (local path or URL)
      * @param param.title - Image title
+     * @param param.insertMode - `'path'` keeps the reference, `'base64'`
+     *   embeds as a data URI
      */
-    private _replaceImageAsync = async ({ alt, src, title }: IState) => {
+    private _replaceImageAsync = async ({ alt, src, title, insertMode }: IState) => {
         // No source provided, just hide
         if (!src) {
             this.hide();
             return;
         }
-        // Direct replacement: no upload needed
-        if (!this.options.imageAction || URL_REG.test(src)) {
+        // No imageAction: write the src verbatim. The insertMode flag is moot —
+        // there is no embedder to convert to base64 — so we skip the upload
+        // path entirely.
+        if (!this.options.imageAction) {
+            this._replaceImageDirect(alt, src, title);
+            return;
+        }
+        // 'path' mode with a remote URL: nothing to upload/embed, write directly.
+        if (insertMode === 'path' && URL_REG.test(src)) {
             this._replaceImageDirect(alt, src, title);
             return;
         }
 
-        // Upload flow: show loading state, upload, then replace
-        await this._replaceImageWithUpload(alt, src, title);
+        // Either 'base64' mode (embedder converts to data URI) or 'path' mode
+        // with a local src (embedder runs its upload/copy-to-folder flow).
+        await this._replaceImageWithUpload(alt, src, title, insertMode);
     };
 
     /**
@@ -390,9 +438,16 @@ export class ImageEditTool extends BaseFloat {
 
     /**
      * Replace image with upload flow
-     * Shows loading state, uploads the image, then replaces with uploaded URL
+     * Shows loading state, calls `imageAction` (with the `insertMode` flag so
+     * the embedder can choose between path-reference and base64 embedding), then
+     * replaces the placeholder with the resolved src.
      */
-    private async _replaceImageWithUpload(alt: string, src: string, title: string) {
+    private async _replaceImageWithUpload(
+        alt: string,
+        src: string,
+        title: string,
+        insertMode: 'path' | 'base64',
+    ) {
         // Create unique ID for loading state
         const loadingId = `loading-${getUniqueId()}`;
 
@@ -404,8 +459,10 @@ export class ImageEditTool extends BaseFloat {
         });
         this.hide();
 
-        // Upload image and get new URL
-        const uploadedSrc = await this.options.imageAction!({ src, title, alt });
+        // Hand off to the embedder. `insertMode` tells it whether to run its
+        // normal path/upload pipeline (`'path'`) or to convert the image to a
+        // base64 data URI (`'base64'`) and return that as the final src.
+        const uploadedSrc = await this.options.imageAction!({ src, title, alt, insertMode });
 
         // Store local path mapping if available
         const { src: localPath } = getImageSrc(src);
@@ -442,8 +499,8 @@ export class ImageEditTool extends BaseFloat {
 
     /**
      * Handle click on the "Choose Image" button in the select tab.
-     * Opens the one-shot native file picker and applies the chosen path
-     * directly (matching the legacy ImageSelector select-tab behavior).
+     * Opens the one-shot native file picker and applies the chosen path with
+     * the current insert mode (path / base64).
      */
     private async _handleSelectButtonClick() {
         if (!this.options.imagePathPicker) {
@@ -452,8 +509,12 @@ export class ImageEditTool extends BaseFloat {
         }
 
         const path = await this.options.imagePathPicker();
-        const { alt, title } = this._state;
-        return this._replaceImageAsync({ alt, title, src: path });
+        // User cancelled the file picker — do nothing.
+        if (!path) {
+            return;
+        }
+        const { alt, title, insertMode } = this._state;
+        return this._replaceImageAsync({ alt, title, src: path, insertMode });
     }
 
     /**
@@ -552,8 +613,58 @@ export class ImageEditTool extends BaseFloat {
     }
 
     /**
+     * Render the insert-mode radio group shown at the bottom of both tabs.
+     * Lets the user choose whether the image is written to the markdown source
+     * as a path reference (`'path'`) or as a base64 `data:` URI (`'base64'`).
+     */
+    private _renderInsertMode(): VNode {
+        const { i18n } = this.muya;
+        const { insertMode } = this._state;
+
+        const makeOption = (value: 'path' | 'base64', label: string): VNode => h(
+            'label.insert-mode-option',
+            {
+                on: {
+                    // Bind click on <label> so clicking either the radio
+                    // circle OR the text <span> triggers the toggle.
+                    // BaseFloat's floatBox click handler calls
+                    // `preventDefault()` on every bubbling click, which
+                    // cancels the browser's native radio-toggle behavior.
+                    // Our handler fires first (label is deeper in the DOM
+                    // than floatBox), so we update state and defer
+                    // `_render()` to the next macrotask — after Chromium
+                    // rolls back the native `checked` property.
+                    click: () => {
+                        this._state.insertMode = value;
+                        setTimeout(() => {
+                            this._render();
+                        }, 0);
+                    },
+                },
+            },
+            [
+                h('input', {
+                    props: {
+                        type: 'radio',
+                        name: 'mu-insert-mode',
+                        value,
+                        checked: insertMode === value,
+                    },
+                }),
+                h('span', label),
+            ],
+        );
+
+        return h('div.insert-mode', [
+            makeOption('path', i18n.t('Insert as path')),
+            makeOption('base64', i18n.t('Insert as Base64')),
+        ]);
+    }
+
+    /**
      * Render the image edit tool UI as a tabbed selector matching the legacy
-     * ImageSelector: a header (Select / Embed link) and the active tab body.
+     * ImageSelector: a header (Select / Embed link), the active tab body, and
+     * a shared insert-mode radio group pinned at the bottom.
      */
     private _render() {
         const { _oldVNode: oldVNode, _imageSelectorContainer: imageSelectorContainer } = this;
@@ -565,6 +676,7 @@ export class ImageEditTool extends BaseFloat {
         const vnode = h('div', [
             this._renderHeader(),
             h('div.image-select-body', body),
+            this._renderInsertMode(),
         ]);
 
         patch(oldVNode || imageSelectorContainer, vnode);

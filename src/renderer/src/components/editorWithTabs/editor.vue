@@ -124,6 +124,9 @@ import { SpellChecker } from '@/spellchecker'
 import { isOsx, animatedScrollTo } from '@/util'
 import { moveImageToFolder, uploadImage } from '@/util/fileSystem'
 import { guessClipboardFilePath } from '@/util/clipboard'
+// Tauri 2 IPC: used by `muyaImageAction` to call the `image_to_data_uri`
+// command when the user (or a paste flow) requests Base64 embedding.
+import { invoke } from '@tauri-apps/api/core'
 import { getCssForOptions, getHtmlToc, type PdfCssOptions, type HtmlTocOptions } from '@/util/pdf'
 import { resolveTocHeadingElement } from '@/util/tocNavigation'
 import { addCommonStyle, setEditorWidth } from '@/util/theme'
@@ -896,46 +899,31 @@ const imageAction = async (
           type: 'warning',
           message: err as string
         })
-        destImagePath = (await moveImageToFolder(
-          currentPathname,
-          image,
-          resolvedGlobalImageFolderPath
-        )) as string
+        try {
+          destImagePath = (await moveImageToFolder(
+            currentPathname,
+            image,
+            resolvedGlobalImageFolderPath
+          )) as string
+        } catch (moveErr) {
+          notice.notify({
+            title: 'Move Image Failed',
+            type: 'error',
+            message: (moveErr as Error).message || String(moveErr)
+          })
+          return ''
+        }
       }
       break
     }
     case 'folder': {
-      if (isTabSavedOnDisk && imagePreferRelativeDirectory.value) {
-        // `image` may be a path string (paste/drag/image-selector) — pass
-        // `currentPathname` so moveImageToFolder can resolve relative paths
-        // via `path.dirname(pathname)` instead of crashing on `dirname(null)`.
-        destImagePath = (await moveImageToFolder(
-          currentPathname,
-          image,
-          resolvedImageRelativeFullDirectoryPath as string,
-          true,
-          currentPathname
-        )) as string
-      } else {
-        destImagePath = (await moveImageToFolder(
-          currentPathname,
-          image,
-          resolvedGlobalImageFolderPath
-        )) as string
-      }
-      break
-    }
-    case 'path': {
-      if (typeof image === 'string') {
-        // Input is a local path.
-        destImagePath = image
-      } else {
-        // Save and move image to image folder if input is binary.
-
-        // Respect user preferences if tab exists on disk.
+      try {
         if (isTabSavedOnDisk && imagePreferRelativeDirectory.value) {
+          // `image` may be a path string (paste/drag/image-selector) — pass
+          // `currentPathname` so moveImageToFolder can resolve relative paths
+          // via `path.dirname(pathname)` instead of crashing on `dirname(null)`.
           destImagePath = (await moveImageToFolder(
-            null as unknown as string,
+            currentPathname,
             image,
             resolvedImageRelativeFullDirectoryPath as string,
             true,
@@ -947,6 +935,47 @@ const imageAction = async (
             image,
             resolvedGlobalImageFolderPath
           )) as string
+        }
+      } catch (folderErr) {
+        notice.notify({
+          title: 'Insert Image Failed',
+          type: 'error',
+          message: (folderErr as Error).message || String(folderErr)
+        })
+        return ''
+      }
+      break
+    }
+    case 'path': {
+      if (typeof image === 'string') {
+        // Input is a local path.
+        destImagePath = image
+      } else {
+        // Save and move image to image folder if input is binary.
+        try {
+          // Respect user preferences if tab exists on disk.
+          if (isTabSavedOnDisk && imagePreferRelativeDirectory.value) {
+            destImagePath = (await moveImageToFolder(
+              null as unknown as string,
+              image,
+              resolvedImageRelativeFullDirectoryPath as string,
+              true,
+              currentPathname
+            )) as string
+          } else {
+            destImagePath = (await moveImageToFolder(
+              currentPathname,
+              image,
+              resolvedGlobalImageFolderPath
+            )) as string
+          }
+        } catch (pathErr) {
+          notice.notify({
+            title: 'Insert Image Failed',
+            type: 'error',
+            message: (pathErr as Error).message || String(pathErr)
+          })
+          return ''
         }
       }
       break
@@ -963,12 +992,62 @@ const imageAction = async (
   return destImagePath
 }
 
-// Adapt the engine's `imageAction` contract (`{ src, alt, title }`) to the
-// desktop's `imageAction(image, id, alt)`. The engine handles a single inline
-// image edit (no `id` round-trip / source-mode bus event), so we pass `null`
-// for `id`.
-const muyaImageAction = (state: { src: string; alt?: string; title?: string }): Promise<string> =>
-  imageAction(state.src, null, state.alt ?? '')
+// Adapt the engine's `imageAction` contract (`{ src, alt, title, insertMode }`)
+// to the desktop's `imageAction(image, id, alt)` flow, with optional base64
+// embedding.
+//
+// - `insertMode === 'base64'`: hand the src to the Tauri `image_to_data_uri`
+//   command, which reads the local file (or decodes a `data:` URL / downloads
+//   an http URL), optionally resizes, and returns a base64 `data:` URI that
+//   gets written straight into the markdown source. Used for pasted images
+//   (per product requirement) and when the user picks "Insert as Base64" in
+//   the image-edit tool.
+// - `insertMode === 'path'` (default / undefined): run the existing
+//   upload/folder/path pipeline based on the `imageInsertAction` preference.
+const muyaImageAction = async (
+  state: { src: string; alt?: string; title?: string; insertMode?: 'path' | 'base64' }
+): Promise<string> => {
+  if (state.insertMode === 'base64') {
+    const currentPathname = currentFile.value?.pathname ?? ''
+    const baseDir = currentPathname
+      ? (window as unknown as { path?: { dirname: (p: string) => string } })
+          .path?.dirname(currentPathname) ?? ''
+      : ''
+    try {
+      const result = await invoke<{
+        originalSrc: string
+        dataUri: string | null
+        originalWidth: number | null
+        resizedWidth: number | null
+        originalSize: number | null
+        finalSize: number | null
+        error: string | null
+      }>('image_to_data_uri', {
+        src: state.src,
+        baseDir,
+        resize: null
+      })
+      if (result?.dataUri) {
+        return result.dataUri
+      }
+      const errMsg = result?.error ?? 'unknown error'
+      notice.notify({
+        title: 'Embed Image Failed',
+        type: 'error',
+        message: `Failed to convert image to Base64: ${errMsg}`
+      })
+      return ''
+    } catch (err) {
+      notice.notify({
+        title: 'Embed Image Failed',
+        type: 'error',
+        message: (err as Error)?.message || String(err)
+      })
+      return ''
+    }
+  }
+  return imageAction(state.src, null, state.alt ?? '')
+}
 
 const imagePathPicker = () => {
   return editorStore.ASK_FOR_IMAGE_PATH()
@@ -1257,7 +1336,7 @@ const handleExport = async (options: unknown) => {
   const opts = options as ExportOptions
   const { type, headerFooterStyled, htmlTitle } = opts
 
-  if (!/^pdf|print|styledHtml$/.test(type)) {
+  if (!/^pdf|print|styledHtml|docx$/.test(type)) {
     throw new Error(`Invalid type to export: "${type}".`)
   }
 
@@ -1268,14 +1347,46 @@ const handleExport = async (options: unknown) => {
   const footer = (opts.footer ?? null) as HeaderFooterPart | null
 
   switch (type) {
+    case 'docx': {
+      // DOCX 导出：不走 muya HTML 渲染，直接传 Markdown 给 Rust 后端
+      // Rust 侧 export_docx 用 pulldown-cmark 解析 + docx-rs 生成 + 内嵌图片
+      // 字体设置：当用户在导出弹窗勾选"覆盖字体"时，opts 中会携带 fontFamily/fontSize/lineHeight
+      try {
+        const filename = (htmlTitle || '')
+        editorStore.EXPORT({
+          type,
+          content: markdown,
+          filename,
+          pathname: props.pathname || '',
+          fontFamily: (opts.fontFamily as string | undefined) ?? undefined,
+          fontSize: (opts.fontSize as number | undefined) ?? undefined,
+          lineHeight: (opts.lineHeight as number | undefined) ?? undefined
+        })
+      } catch (err) {
+        log.error('Failed to export DOCX:', err)
+        notice.notify({
+          title: t('editor.export.failed', { type: 'DOCX' }),
+          type: 'error',
+          message:
+            (err as { message?: string } | null | undefined)?.message ?? t('editor.export.error')
+        })
+      }
+      break
+    }
     case 'styledHtml': {
       try {
+        // v2.0 F3：从偏好读取是否 base64 内嵌（默认 embed）
+        const shouldEmbed = preferencesStore.exportImageEmbed === 'embed'
         const content = await exportStyledHTML(editor.value, markdown, {
           title: htmlTitle || '',
           printOptimization: false,
           extraCss,
           toc: htmlToc,
-          dir: props.textDirection
+          dir: props.textDirection,
+          pathname: props.pathname || '',
+          embedImages: shouldEmbed,
+          imageResizeMode: preferencesStore.exportImageResize,
+          imageMaxWidth: preferencesStore.exportImageMaxWidth
         })
         editorStore.EXPORT({ type, content })
       } catch (err) {
@@ -1300,6 +1411,8 @@ const handleExport = async (options: unknown) => {
           isLandscape
         }
 
+        // v2.0 F3：PDF 打印同样应用 base64 内嵌（保证打印渲染不依赖外部文件）
+        const shouldEmbed = preferencesStore.exportImageEmbed === 'embed'
         const html = await exportStyledHTML(editor.value, markdown, {
           title: '',
           printOptimization: true,
@@ -1308,9 +1421,14 @@ const handleExport = async (options: unknown) => {
           header,
           footer,
           headerFooterStyled: headerFooterStyled as boolean | undefined,
-          dir: props.textDirection
+          dir: props.textDirection,
+          pathname: props.pathname || '',
+          embedImages: shouldEmbed,
+          imageResizeMode: preferencesStore.exportImageResize,
+          imageMaxWidth: preferencesStore.exportImageMaxWidth
         })
-        printer!.renderMarkdown(html, true)
+        // 注意：base64 内嵌已在 exportStyledHTML 中完成，此处 renderMarkdown 不再重复
+        await printer!.renderMarkdown(html, true)
         editorStore.EXPORT({ type, pageOptions })
       } catch (err) {
         log.error('Failed to export document:', err)
@@ -1326,6 +1444,8 @@ const handleExport = async (options: unknown) => {
     case 'print': {
       // NOTE: Print doesn't support page size or orientation.
       try {
+        // v2.0 F3：打印同样应用 base64 内嵌
+        const shouldEmbed = preferencesStore.exportImageEmbed === 'embed'
         const html = await exportStyledHTML(editor.value, markdown, {
           title: '',
           printOptimization: true,
@@ -1334,9 +1454,13 @@ const handleExport = async (options: unknown) => {
           header,
           footer,
           headerFooterStyled: headerFooterStyled as boolean | undefined,
-          dir: props.textDirection
+          dir: props.textDirection,
+          pathname: props.pathname || '',
+          embedImages: shouldEmbed,
+          imageResizeMode: preferencesStore.exportImageResize,
+          imageMaxWidth: preferencesStore.exportImageMaxWidth
         })
-        printer!.renderMarkdown(html, true)
+        await printer!.renderMarkdown(html, true)
         editorStore.PRINT_RESPONSE()
       } catch (err) {
         log.error('Failed to export document:', err)

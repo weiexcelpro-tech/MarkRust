@@ -24,6 +24,9 @@ pub enum AppError {
     #[error("Walkdir error: {0}")]
     Walkdir(String),
 
+    #[error("Image error: {0}")]
+    Image(String),
+
     #[error("{0}")]
     Other(String),
 }
@@ -31,6 +34,12 @@ pub enum AppError {
 impl From<walkdir::Error> for AppError {
     fn from(e: walkdir::Error) -> Self {
         AppError::Walkdir(e.to_string())
+    }
+}
+
+impl From<image::ImageError> for AppError {
+    fn from(e: image::ImageError) -> Self {
+        AppError::Image(e.to_string())
     }
 }
 

@@ -5,6 +5,7 @@ import type { Listener } from './event/types';
 import type { ILocale } from './i18n/types';
 import type { IIndexCursor } from './selection/offsetCursor';
 import type { IHistorySelection, IPublicCursorInput } from './selection/types';
+import { SelectionCaretType, SelectionDirection } from './selection/types';
 import type { ITocItem } from './state/getTOC';
 import type { IBulletListState, IOrderListState, ITableState, ITaskListState, TState } from './state/types';
 import type { IMuyaOptions, Nullable } from './types';
@@ -395,9 +396,34 @@ export class Muya {
             return;
         }
 
-        const sel = selection.getSelection();
-        if (!sel)
-            return;
+        let sel = selection.getSelection();
+
+        // Menu/IPC round-trip blurs the editor; the browser clears
+        // document.getSelection(), so getSelection() returns null even though
+        // the cached endpoints (written by every caret move/click) are still
+        // valid. _selectionInSameLeaf() above already confirmed via the same
+        // cache that we are in a single leaf, so the cache is authoritative
+        // here. Without this fallback the image/link menu items silently
+        // no-op after the editor loses focus (#image-insert).
+        if (!sel) {
+            const cachedAnchorBlock = selection.anchorBlock;
+            const cachedFocusBlock = selection.focusBlock;
+            const cachedAnchor = selection.anchor;
+            const cachedFocus = selection.focus;
+            if (!cachedAnchorBlock || !cachedFocusBlock
+                || !cachedAnchor || !cachedFocus
+                || cachedAnchorBlock !== cachedFocusBlock)
+                return;
+            const path = cachedAnchorBlock.path;
+            sel = {
+                anchor: { offset: cachedAnchor.offset, block: cachedAnchorBlock, path },
+                focus: { offset: cachedFocus.offset, block: cachedFocusBlock, path },
+                isCollapsed: cachedAnchor.offset === cachedFocus.offset,
+                isSelectionInSameBlock: true,
+                direction: SelectionDirection.FORWARD,
+                type: SelectionCaretType.CARET,
+            };
+        }
 
         const { anchor, focus, isSelectionInSameBlock } = sel;
         const anchorBlock = anchor.block;

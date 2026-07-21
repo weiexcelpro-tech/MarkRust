@@ -290,11 +290,50 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
     }
   },
   'mt::response-export': async (args) => {
-    const { type, content, filename, pathname } = args[0] as {
+    const { type, content, filename, pathname, fontFamily, fontSize, lineHeight } = args[0] as {
       type: string; content: string; filename: string; pathname: string
+      fontFamily?: string; fontSize?: number; lineHeight?: number
     }
     if (type === 'pdf') {
       window.print()
+      return
+    }
+    if (type === 'docx') {
+      // v2.0: DOCX 导出走 Rust 后端 export_docx 命令
+      // 后端内部会弹出保存对话框，前端不需再调 dialog_save_file
+      try {
+        const prefs = await invoke<Record<string, unknown>>('preferences_get_all')
+        const result = await invoke<{
+          path: string
+          size: number
+          imageCount: number
+          warnings: string[]
+        }>('export_docx', {
+          req: {
+            markdown: content,
+            pathname: pathname || '',
+            imageEmbed: true, // DOCX 强约束自包含 (PRD AC-32)，始终内嵌
+            imageResize: (prefs.exportImageResize as string) || 'auto',
+            imageMaxWidth: (prefs.exportImageMaxWidth as number) || 1024,
+            pageSize: (prefs.docxPageSize as string) || 'A4',
+            pageMargin: (prefs.docxPageMargin as string) || 'normal',
+            fontFamily: fontFamily ?? null,
+            fontSize: fontSize ?? 11,
+            lineHeight: lineHeight ?? 1.5
+          }
+        })
+        localEmit('mt::export-success', {
+          filePath: result.path,
+          extra: {
+            size: result.size,
+            imageCount: result.imageCount,
+            warnings: result.warnings
+          }
+        })
+      } catch (e) {
+        console.error('[tauri-bridge] export_docx failed:', e)
+        localEmit('mt::export-failure', { error: String(e) })
+      }
       return
     }
     const baseName = (filename || pathe.basename(pathname || '') || 'export')

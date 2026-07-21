@@ -116,6 +116,21 @@ export interface IImageActionState {
     alt: string;
     /** Image title. */
     title: string;
+    /**
+     * How the embedder should persist the image before writing the final src
+     * back into the markdown source:
+     *
+     * - `'path'` (default): keep the image as a path reference — copy-to-folder
+     *   / upload / keep-path per the embedder's `imageInsertAction` preference.
+     *   The value returned by `imageAction` is the path written into the doc.
+     * - `'base64'`: embed the image as a `data:` URL directly in the markdown
+     *   source. The embedder converts the local file (or re-encodes the bitmap)
+     *   to a base64 data URI and returns that URI as the final src.
+     *
+     * Pasted images pass `'base64'` by default per the product requirement so
+     * the pasted bitmap is self-contained in the document.
+     */
+    insertMode?: 'path' | 'base64';
 }
 
 export type Nullable<T> = T | null | undefined | void;

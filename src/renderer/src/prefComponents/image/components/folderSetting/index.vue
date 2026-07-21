@@ -97,6 +97,9 @@ const relativeDirectoryNamePlaceholder = computed<string>(
 
 // methods
 const openImageFolder = (): void => {
+  if (!imageFolderPath.value || imageFolderPath.value.trim() === '') {
+    return
+  }
   window.electron.shell.openPath(imageFolderPath.value)
 }
 

@@ -225,27 +225,47 @@ async function persistDroppedImage(
     }
 }
 
+// Read a File object as a base64 data URI (for environments like Tauri
+// where the File object lacks a `path` property and `getPathForFile` is
+// a no-op). Resolves to `''` on failure.
+function readFileAsDataUri(file: File): Promise<string> {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+    });
+}
+
 // Drop path 2 — a local image FILE. Resolve it to a path via the embedder
 // `getPathForFile` hook, then insert it.
 //
-// When an `imageAction` hook is configured we insert a `![loading-id](path)`
+// When `getPathForFile` returns '' (Tauri WebView2: File has no `path`),
+// fall back to reading the file as a base64 data URI so the image is still
+// inserted.
+//
+// When an `imageAction` hook is configured we insert a `![loading-id](src)`
 // placeholder and let `persistDroppedImage` swap in the persisted src once the
 // hook resolves (copy-to-assets / upload). Without the hook there is nothing to
-// persist to, so we insert a clean `![name](path)` with the raw path verbatim —
+// persist to, so we insert a clean `![name](src)` with the raw src verbatim —
 // matching the documented `imageAction` contract and the imageEditTool's
 // direct-replacement behaviour (a permanent `loading-*` alt would otherwise be
 // left behind).
-function handleFileImage(
+async function handleFileImage(
     muya: Muya,
     event: DragEvent,
     target: IDropTarget,
-): boolean {
+): Promise<boolean> {
     const files = Array.from(event.dataTransfer?.files ?? []);
     const image = files.find(file => /image/.test(file.type));
     if (!image)
         return false;
 
-    const path = muya.options.getPathForFile?.(image);
+    let path = muya.options.getPathForFile?.(image);
+    if (!path) {
+        // Fallback: read the file as a base64 data URI (Tauri WebView2).
+        path = await readFileAsDataUri(image);
+    }
     if (!path)
         return false;
 
@@ -313,12 +333,14 @@ export function attachDragDropImageHandlers(muya: Muya): void {
         // Only fall through to the web-link branch for the likely-web-image
         // signature, so a plain hyperlink drop is left to the browser rather
         // than suppressed by `preventDefault()`.
-        let inserted = handleFileImage(muya, dragEvent, target);
-        if (!inserted && isWebImageDrag(dataTransfer))
-            inserted = handleWebLinkImage(muya, dragEvent, target);
+        void (async () => {
+            let inserted = await handleFileImage(muya, dragEvent, target);
+            if (!inserted && isWebImageDrag(dataTransfer))
+                inserted = handleWebLinkImage(muya, dragEvent, target);
 
-        if (inserted)
-            event.preventDefault();
+            if (inserted)
+                event.preventDefault();
+        })();
     };
 
     const dragLeaveHandler = () => hideGhost();

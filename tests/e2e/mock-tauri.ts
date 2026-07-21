@@ -126,7 +126,18 @@ export const MOCK_INVOKE_RESPONSES: Record<string, unknown> = {
   dialog_open_file: null,
   dialog_open_directory: null,
   ask_for_image_path: null,
-  updater_check_latest: { has_update: false, latest_version: '0.1.0', download_url: '', notes: '' },
+  image_to_data_uri: {
+    // 1x1 transparent PNG — a minimal valid base64 image so the <img> element
+    // can load in the test browser without hitting a real file or asset URL.
+    originalSrc: '',
+    dataUri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    originalWidth: null,
+    resizedWidth: null,
+    originalSize: null,
+    finalSize: null,
+    error: null,
+  },
+  updater_check_latest: { has_update: false, latest_version: '1.1.0', download_url: '', notes: '' },
   clipboard_read_text: '',
   clipboard_write_text: null,
   clipboard_guess_file_path: null,
@@ -279,4 +290,34 @@ export async function emitTauriEvent(page: Page, event: string, payload?: unknow
   await page.evaluate(({ event, payload }) => {
     return window.__TAURI_INTERNALS__.invoke('plugin:event|emit', { event, payload })
   }, { event, payload })
+}
+
+/**
+ * 在 dev 模式（纯前端无 Rust 后端）下初始化编辑器应用。
+ *
+ * tauri-bridge.doBootstrap() 在 mt::renderer-ready 事件触发后 localEmit('mt::bootstrap-editor')，
+ * 但 editor.ts 的 LISTEN_FOR_BOOTSTRAP_WINDOW() 在 Vue onMounted 的 await 之后才注册 listener，
+ * 时序竞争导致 localEmit 落空，应用不创建初始 tab。
+ *
+ * 此函数通过 emitTauriEvent（走 plugin:event|emit 通道）在 listener 注册后重新触发
+ * bootstrap-editor 事件，确保编辑器初始化。
+ */
+export async function bootstrapApp(page: Page, options: { gotoUrl?: string; waitForMs?: number } = {}): Promise<void> {
+  const url = options.gotoUrl ?? 'http://localhost:1420/'
+  const waitForMs = options.waitForMs ?? 3000
+  await page.goto(url)
+  // 等待 Vue onMounted（含 await commandCenterStore.LISTEN_COMMAND_CENTER_BUS()）完成，
+  // 确保 LISTEN_FOR_BOOTSTRAP_WINDOW 的 ipcRenderer.on('mt::bootstrap-editor') 已注册
+  await page.waitForTimeout(waitForMs)
+  await emitTauriEvent(page, 'mt::bootstrap-editor', {
+    addBlankTab: true,
+    markdownList: [],
+    lineEnding: 'lf',
+    sideBarVisibility: true,
+    tabBarVisibility: true,
+    sourceCodeModeEnabled: false,
+  })
+  // 等待 tab 创建 + 编辑器渲染
+  await page.waitForSelector('.editor-tabs .tabs-container li', { timeout: 10000 })
+  await page.waitForTimeout(500)
 }

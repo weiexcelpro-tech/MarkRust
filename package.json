@@ -1,7 +1,7 @@
 {
   "name": "markrust",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "MarkText rewritten with Tauri 2 + Rust main process, reusing Vue3 renderer and muya engine",
   "scripts": {

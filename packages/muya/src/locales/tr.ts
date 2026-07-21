@@ -88,6 +88,8 @@ export const tr = {
         'Paste web image or local image path. Use': 'Web görseli veya yerel görsel yolu yapıştırın. Şunu kullanın:',
         'simple mode': 'basit mod',
         'full mode': 'tam mod',
+        'Insert as path': 'Yol olarak ekle',
+        'Insert as Base64': 'Base64 olarak ekle',
         // preview block
         'Loading...': 'Yükleniyor...',
         'Invalid Diagram Code': 'Geçersiz Diyagram Kodu',

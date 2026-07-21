@@ -33,7 +33,12 @@ export default function loadImageAsync(
         // served. The cache key (`src`) stays unbusted so ordinary re-renders
         // still hit the cache; only the load/`<img>` URL carries the token.
         // `id` is monotonic (collision-free), unlike legacy muyajs's `?msec=`.
-        const loadSrc = /^file:\/\//i.test(src)
+        // Both `file://` (legacy) and `asset://` (Tauri asset protocol) are local
+        // sources that benefit from cache-busting so on-disk changes are visible.
+        // On Windows Tauri 2 serves the asset protocol via `http://asset.localhost/`.
+        const isLocalSrc = /^(?:file|asset):\/\//i.test(src)
+            || /^http:\/\/asset\.localhost\//i.test(src);
+        const loadSrc = isLocalSrc
             ? `${src}${src.includes('?') ? '&' : '?'}mucache=${id}`
             : src;
         loadImage(loadSrc, isUnknownType)

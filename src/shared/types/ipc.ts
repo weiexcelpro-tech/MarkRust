@@ -38,7 +38,7 @@ import type { MenuTemplate, MenuPopupPosition } from './menu'
 // =================================================================
 
 export interface IpcInvokeChannels {
-  'mt::ask-for-image-path': { args: []; ret: string[] }
+  'mt::ask-for-image-path': { args: []; ret: string | null }
   'mt::boot-info-async': { args: []; ret: BootInfo }
   'mt::clipboard::guess-file-path': { args: []; ret: string | null }
   'mt::clipboard::read-text': { args: []; ret: string }

@@ -86,6 +86,9 @@ interface ExportPayload {
   type: string
   content?: string
   pageOptions?: PageOptions
+  fontFamily?: string
+  fontSize?: number
+  lineHeight?: number
 }
 
 interface AutoSavePayload {
@@ -1535,7 +1538,7 @@ export const useEditorStore = defineStore('editor', {
       )
     },
 
-    EXPORT({ type, content, pageOptions }: ExportPayload): void {
+    EXPORT({ type, content, pageOptions, fontFamily, fontSize, lineHeight }: ExportPayload): void {
       if (this.currentFile === null) return
 
       let title = ''
@@ -1560,7 +1563,10 @@ export const useEditorStore = defineStore('editor', {
         content: content ?? '',
         filename,
         pathname,
-        pageOptions: pageOptions ?? {}
+        pageOptions: pageOptions ?? {},
+        fontFamily,
+        fontSize,
+        lineHeight
       })
     },
 
@@ -1707,7 +1713,7 @@ export const useEditorStore = defineStore('editor', {
       })
     },
 
-    ASK_FOR_IMAGE_PATH(): Promise<string[]> {
+    ASK_FOR_IMAGE_PATH(): Promise<string | null> {
       return window.electron.ipcRenderer.invoke('mt::ask-for-image-path')
     },
 

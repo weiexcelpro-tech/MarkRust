@@ -279,7 +279,7 @@
     "style": {
       "label": "Style",
       "overwriteThemeFont": "Remplacer les paramètres de police du thème",
-      "fontFamily": "Famille de police :",
+      "fontFamily": "Famille de police",
       "fontSize": "Taille de police",
       "lineHeight": "Hauteur de ligne"
     },
@@ -335,7 +335,8 @@
         "default": "GitHub (par défaut)",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "Chargement..."
   },
   "recent": {
     "noTabsOpen": "Vous n'avez aucun onglet ouvert.",

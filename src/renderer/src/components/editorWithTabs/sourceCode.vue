@@ -12,6 +12,7 @@ import { usePreferencesStore } from '@/store/preferences'
 import { findMarkdownHeadingLine, scrollSourceEditorToLine } from '@/util/sourceModeToc'
 import { storeToRefs } from 'pinia'
 import codeMirror, { setCursorAtFirstLine, setTextDirection } from '../../codeMirror'
+import { applyBase64Widgets, handleBase64Change } from '../../codeMirror/base64Widget'
 import { wordCount as getWordCount } from '@muyajs/core'
 import { adjustCursor } from '../../util'
 import bus from '../../bus'
@@ -161,6 +162,8 @@ const handleFileChange = (payload: unknown) => {
 
   if (typeof newMarkdown === 'string') {
     editor.value.setValue(newMarkdown)
+    // v2.0 F4：setValue 后重扫 base64 widget
+    applyBase64Widgets(editor.value)
   }
 
   // t('editor.sourceCode.cursorNullComment')
@@ -241,9 +244,11 @@ const handleImageAction = (payload: unknown) => {
 
   if (index > -1) {
     const oldLine = lines[index]
-    lines[index] = oldLine.replace(new RegExp(`!\\[${id}\\]\\(.*\\)`), `![${alt}](${result})`)
+    lines[index] = oldLine.replace(new RegExp(`!\[${id}\]\(.*\)`), `![${alt}](${result})`)
     const newValue = lines.join('\n')
     editor.value.setValue(newValue)
+    // v2.0 F4：图片插入/替换后重扫 base64 widget
+    applyBase64Widgets(editor.value)
     const match = /(!\[.*\]\(.*\))/.exec(oldLine)
     if (!match) {
       // t('editor.sourceCode.imageStructureDeletedComment')
@@ -304,6 +309,10 @@ const saveContent = (cm: CMInstance) => {
 const listenChange = () => {
   editor.value.on('cursorActivity', (cm: CMInstance) => {
     saveContent(cm)
+  })
+  // v2.0 F4：实时输入/粘贴 base64 图片时增量重扫 widget
+  editor.value.on('change', (cm: CMInstance, change: unknown) => {
+    handleBase64Change(cm, change)
   })
 }
 
@@ -390,6 +399,9 @@ onMounted(() => {
   tabId.value = id
 
   listenChange()
+
+  // v2.0 F4：首次进入源码模式，扫描已有 base64 图片并打 widget
+  applyBase64Widgets(codeMirrorInstance)
 })
 
 onBeforeUnmount(() => {
@@ -434,5 +446,21 @@ onBeforeUnmount(() => {
 .source-code .CodeMirror-activeline-background,
 .source-code .CodeMirror-activeline-gutter {
   background: var(--floatHoverColor);
+}
+
+/* v2.0 F4: base64 图片源码折叠占位符样式 */
+.source-code .cm-base64-placeholder {
+  display: inline-block;
+  padding: 0 8px;
+  margin: 0 2px;
+  border-radius: 3px;
+  background: var(--floatHoverColor, #eef1f6);
+  color: var(--editorColor, #506e85);
+  font-size: 0.85em;
+  font-family: var(--codeFont, 'DejaVu Sans Mono', monospace);
+  border: 1px dashed var(--editorColor30, #aaa);
+  user-select: none;
+  cursor: default;
+  white-space: nowrap;
 }
 </style>

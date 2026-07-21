@@ -8,7 +8,18 @@
       width="500px"
     >
       <h3>{{ t('exportSettings.title') }}</h3>
-      <el-tabs v-model="activeName">
+      <el-tabs
+        v-model="activeName"
+        class="export-tabs"
+      >
+        <!-- Tab loading overlay: 300ms CSS delay, so fast switches never show it -->
+        <div
+          v-if="isTabLoading"
+          class="tab-switch-loading"
+        >
+          <span class="tab-switch-loading__text">{{ t('exportSettings.loading') }}</span>
+        </div>
+
         <el-tab-pane
           :label="t('exportSettings.info.label')"
           name="info"
@@ -119,7 +130,7 @@
             :bool="fontSettingsOverwrite"
             :on-change="(value: unknown) => onSelectChange('fontSettingsOverwrite', value)"
           />
-          <div v-if="fontSettingsOverwrite">
+          <div v-show="fontSettingsOverwrite">
             <font-text-box
               :description="t('exportSettings.style.fontFamily')"
               :value="fontFamily"
@@ -239,7 +250,7 @@
             :on-change="(value: unknown) => onSelectChange('headerFooterCustomize', value)"
           />
 
-          <div v-if="headerFooterCustomize">
+          <div v-show="headerFooterCustomize">
             <bool
               :description="t('exportSettings.headerFooter.allowStyled')"
               :bool="headerFooterStyled"
@@ -339,8 +350,31 @@ const headerFooterFontSize = ref(12)
 const tocTitle = ref('')
 const tocIncludeTopHeading = ref(true)
 
+// --- Tab-switch loading indicator ---
+// Fast switches (< 300 ms) never show the spinner;
+// slow switches (e.g. first-time IPC / layout reflow) get a visible loading hint.
+//
+// Strategy: isTabLoading is set to true immediately on tab switch.
+// CSS animation-delay (300 ms) prevents the overlay from becoming visible
+// during fast switches — by the time the animation would start, double-rAF
+// has already cleared the flag. For slow switches (heavy reflow), the
+// browser is busy and won't execute the rAF callbacks until it's idle,
+// so the overlay stays visible until the switch completes.
+const isTabLoading = ref(false)
+
+watch(activeName, () => {
+  isTabLoading.value = true
+  // Double-rAF: wait for the browser to finish at least one full paint
+  // cycle after the DOM update. In fast scenarios this fires in ~32 ms;
+  // in slow scenarios (heavy reflow) the browser defers rAF until idle.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      isTabLoading.value = false
+    })
+  })
+})
+
 // #2287 — persist the chosen export options across sessions. Every option ref
-// is registered here; changes are saved to localStorage and restored on mount.
 const persistableSettings: Record<string, Ref<unknown>> = {
   htmlTitle,
   pageSize,
@@ -380,12 +414,20 @@ const restoreExportSettings = () => {
   }
 }
 
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+
 watch(Object.values(persistableSettings), () => {
-  saveExportSettings(
-    Object.fromEntries(
-      Object.entries(persistableSettings).map(([key, settingRef]) => [key, settingRef.value])
+  // Debounce localStorage writes so rapid toggles (or Range slider drags)
+  // don't issue a synchronous JSON.stringify + setItem on every tick.
+  if (saveTimer !== null) clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveTimer = null
+    saveExportSettings(
+      Object.fromEntries(
+        Object.entries(persistableSettings).map(([key, settingRef]) => [key, settingRef.value])
+      )
     )
-  )
+  }, 300)
 })
 
 onMounted(() => {
@@ -395,6 +437,16 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (saveTimer !== null) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+    // Flush pending save so no setting is lost on unmount.
+    saveExportSettings(
+      Object.fromEntries(
+        Object.entries(persistableSettings).map(([key, settingRef]) => [key, settingRef.value])
+      )
+    )
+  }
   bus.off('showExportDialog', showDialog)
   bus.off('language-changed', updateTranslations)
 })
@@ -584,6 +636,51 @@ const loadThemesFromDisk = async () => {
 
 .el-tab-pane section:first-child {
   margin-top: 0;
+}
+
+.export-tabs {
+  position: relative;
+}
+
+.tab-switch-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--floatBgColor, rgba(255, 255, 255, 0.85));
+  z-index: 10;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  /* 300 ms delay before the overlay becomes visible —
+     fast tab switches complete before this fires. */
+  animation: tabLoadingIn 0.2s ease 0.3s forwards;
+}
+
+.tab-switch-loading__text {
+  color: var(--editorColor, #333);
+  font-size: 13px;
+}
+
+.tab-switch-loading::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--themeColor, #409eff);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: tabSpin 0.8s linear infinite;
+}
+
+@keyframes tabLoadingIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes tabSpin {
+  to { transform: rotate(360deg); }
 }
 </style>
 <style>

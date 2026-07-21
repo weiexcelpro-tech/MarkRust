@@ -279,7 +279,7 @@
     "style": {
       "label": "Stil",
       "overwriteThemeFont": "Tema yazı tipi ayarlarının üzerine yaz",
-      "fontFamily": "Yazı tipi ailesi:",
+      "fontFamily": "Yazı tipi ailesi",
       "fontSize": "Yazı tipi boyutu",
       "lineHeight": "Satır yüksekliği"
     },
@@ -335,7 +335,8 @@
         "default": "GitHub (Varsayılan)",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "Yükleniyor..."
   },
   "recent": {
     "noTabsOpen": "Açık sekmeniz yok.",

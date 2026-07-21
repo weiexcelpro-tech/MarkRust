@@ -191,6 +191,12 @@ fn build_file_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::men
             t("menu.file.exportPdf", locale),
             "Ctrl+Alt+E",
         )?)
+        .item(&text_item(
+            app,
+            "file.export-file-docx",
+            t("menu.file.exportDocx", locale),
+            "Ctrl+Alt+Shift+E",
+        )?)
         .item(&text_item(app, "file.print", t("menu.file.print", locale), "Ctrl+P")?)
         .separator()
         .item(&text_item(app, "file.preferences", t("menu.file.preferences", locale), "Ctrl+,")?)

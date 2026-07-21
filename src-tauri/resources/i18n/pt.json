@@ -279,7 +279,7 @@
     "style": {
       "label": "Estilo",
       "overwriteThemeFont": "Sobrescrever configurações de fonte do tema",
-      "fontFamily": "Família da fonte:",
+      "fontFamily": "Família da fonte",
       "fontSize": "Tamanho da fonte",
       "lineHeight": "Altura da linha"
     },
@@ -335,7 +335,8 @@
         "default": "GitHub (Padrão)",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "Carregando..."
   },
   "recent": {
     "noTabsOpen": "Você não tem abas abertas.",

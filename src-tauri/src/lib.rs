@@ -149,6 +149,10 @@ pub fn run() {
             commands::recent::recent_add,
             commands::recent::recent_get,
             commands::recent::recent_clear,
+            // === v2.0: export commands (3) ===
+            commands::export::export_docx,
+            commands::export::image_to_data_uri,
+            commands::export::images_to_data_uris,
             // === menu control commands (3) ===
             commands::menu::menu_set_checked,
             commands::menu::menu_set_enabled,

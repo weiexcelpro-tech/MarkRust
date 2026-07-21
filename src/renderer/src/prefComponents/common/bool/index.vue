@@ -35,6 +35,7 @@
     </div>
     <el-switch
       v-model="status"
+      :validate-event="false"
       @change="handleSwitchChange"
     />
   </section>
@@ -110,13 +111,14 @@ const handleSwitchChange = (value: boolean | string | number) => {
   }
 }
 
-span.el-switch__core::after {
-  top: 3px;
-  left: 7px;
-  width: 10px;
-  height: 10px;
-}
-
+/*
+ * Element Plus 2.x el-switch structure:
+ *   .el-switch > .el-switch__core > .el-switch__action (slider dot)
+ * The old CSS targeted `::after` pseudo-element (Element Plus 1.x), which is
+ * a no-op in 2.x and left the switch with default styling. Below we target
+ * the real 2.x elements and use `transform` instead of `left` for the slide
+ * animation to avoid layout reflow on every toggle.
+ */
 .el-switch .el-switch__core {
   border: 2px solid var(--iconColor);
   background: transparent;
@@ -127,12 +129,31 @@ span.el-switch__label {
   color: var(--editorColor50);
 }
 
-.el-switch:not(.is-checked) .el-switch__core::after {
-  background: var(--iconColor);
+/* Slider dot: use transform for GPU-accelerated animation (no reflow) */
+.el-switch:not(.is-checked) .el-switch__core .el-switch__action {
+  left: 1px;
+  transform: none;
+  background-color: var(--iconColor);
 }
 
 .el-switch.is-checked .el-switch__core {
   border-color: var(--themeColor);
   background-color: var(--themeColor);
+}
+
+.el-switch.is-checked .el-switch__core .el-switch__action {
+  /* Override EP2 `left: calc(100% - 17px)` with transform for perf */
+  left: 1px;
+  transform: translateX(calc(100% - 2px));
+  background-color: #fff;
+}
+
+/* Suppress the expensive `transition: all` from EP2 default; only animate
+ * background-color and border-color on the track, and transform on the dot. */
+.el-switch .el-switch__core {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.el-switch .el-switch__core .el-switch__action {
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 </style>

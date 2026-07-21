@@ -88,6 +88,8 @@ export const en = {
         'Paste web image or local image path. Use': 'Paste web image or local image path. Use',
         'simple mode': 'simple mode',
         'full mode': 'full mode',
+        'Insert as path': 'Insert as path',
+        'Insert as Base64': 'Insert as Base64',
         // preview block
         'Loading...': 'Loading...',
         'Invalid Diagram Code': 'Invalid Diagram Code',
