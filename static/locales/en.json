@@ -765,8 +765,10 @@
       "quit": "Quit",
       "toggleAutoSave": "Toggle Auto Save",
       "importFile": "Import File",
-      "exportFile": "Export File",
+      "exportFile": "Export",
       "exportFilePdf": "Export as PDF",
+      "exportFileDocx": "Export as DOCX",
+      "exportFileHtml": "Export as HTML",
       "zoom": "Zoom",
       "checkUpdate": "Check for Updates"
     },

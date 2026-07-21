@@ -338,9 +338,16 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
     }
     const baseName = (filename || pathe.basename(pathname || '') || 'export')
       .replace(/\.(md|markdown)$/i, '')
-    const savePath = await invoke<string | null>('dialog_save_file', { defaultName: `${baseName}.html` })
+    // v2.0 修复：HTML 内容为 string，Rust fs_write_file 期望 Vec<u8>；
+    // 直接传 string 会被 serde 拒绝（invalid type: string, expected a sequence），
+    // 必须 TextEncoder 编码为字节数组。
+    const bytes = Array.from(new TextEncoder().encode(content ?? ''))
+    const savePath = await invoke<string | null>('dialog_save_file', {
+      defaultName: `${baseName}.html`,
+      exts: ['html']
+    })
     if (!savePath) return
-    await invoke('fs_write_file', { path: savePath, data: content ?? '' })
+    await invoke('fs_write_file', { path: savePath, data: bytes })
     localEmit('mt::export-success', { filePath: savePath })
   },
   'mt::response-print': async () => {

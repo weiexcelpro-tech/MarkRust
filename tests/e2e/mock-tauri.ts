@@ -137,7 +137,7 @@ export const MOCK_INVOKE_RESPONSES: Record<string, unknown> = {
     finalSize: null,
     error: null,
   },
-  updater_check_latest: { has_update: false, latest_version: '1.1.0', download_url: '', notes: '' },
+  updater_check_latest: { has_update: false, latest_version: '1.1.1', download_url: '', notes: '' },
   clipboard_read_text: '',
   clipboard_write_text: null,
   clipboard_guess_file_path: null,
@@ -305,7 +305,10 @@ export async function emitTauriEvent(page: Page, event: string, payload?: unknow
 export async function bootstrapApp(page: Page, options: { gotoUrl?: string; waitForMs?: number } = {}): Promise<void> {
   const url = options.gotoUrl ?? 'http://localhost:1420/'
   const waitForMs = options.waitForMs ?? 3000
-  await page.goto(url)
+  // 使用 'domcontentloaded' 而非默认 'load'：vite dev server 冷启动时首次编译
+  // 较慢，'load' 事件（等所有资源）易超时；DOM 就绪即可，后续 waitForTimeout +
+  // waitForSelector 会确保 Vue 应用完成初始化。
+  await page.goto(url, { waitUntil: 'domcontentloaded' })
   // 等待 Vue onMounted（含 await commandCenterStore.LISTEN_COMMAND_CENTER_BUS()）完成，
   // 确保 LISTEN_FOR_BOOTSTRAP_WINDOW 的 ipcRenderer.on('mt::bootstrap-editor') 已注册
   await page.waitForTimeout(waitForMs)

@@ -52,17 +52,33 @@ pub fn dialog_open_files(app: tauri::AppHandle) -> AppResult<PathsResult> {
         .collect())
 }
 
-/// 保存对话框，可指定默认文件名，返回选中路径或 None。
+/// 保存对话框，可指定默认文件名和扩展名过滤器，返回选中路径或 None。
+///
+/// `default_name` 为默认文件名（含扩展名），`exts` 为自定义过滤器的扩展名列表。
+/// 当 `exts` 为 `Some` 时，使用自定义过滤器替代默认 Markdown 过滤器；
+/// 为 `None` 时保持原有行为（Markdown + All Files）。
 #[tauri::command]
 pub fn dialog_save_file(
     app: tauri::AppHandle,
     default_name: Option<String>,
+    exts: Option<Vec<String>>,
 ) -> AppResult<PathResult> {
-    let mut builder = app
-        .dialog()
-        .file()
-        .add_filter(MD_FILTER_NAME, MD_EXTS)
-        .add_filter("All Files", &["*"]);
+    let mut builder = app.dialog().file();
+    match exts.as_deref() {
+        Some(list) if !list.is_empty() => {
+            // 使用自定义扩展名过滤器（名称取第一个扩展名大写形式）+ All Files 兜底
+            let name = list[0].to_uppercase();
+            let exts_ref: Vec<&str> = list.iter().map(|s| s.as_str()).collect();
+            builder = builder
+                .add_filter(name.as_str(), &exts_ref)
+                .add_filter("All Files", &["*"]);
+        }
+        _ => {
+            builder = builder
+                .add_filter(MD_FILTER_NAME, MD_EXTS)
+                .add_filter("All Files", &["*"]);
+        }
+    }
     if let Some(name) = default_name {
         builder = builder.set_file_name(name);
     }

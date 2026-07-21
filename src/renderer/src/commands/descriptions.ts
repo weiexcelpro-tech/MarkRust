@@ -22,8 +22,9 @@ const COMMAND_KEY_MAP: Record<string, string> = {
   'file.save': 'commands.file.save',
   'file.save-as': 'commands.file.saveAs',
   'file.export-file': 'commands.file.exportFile',
-  'file.export-file.pdf': 'commands.file.exportFilePdf',
-  'file.export-file.docx': 'commands.file.exportFileDocx',
+  'file.export-file-pdf': 'commands.file.exportFilePdf',
+  'file.export-file-docx': 'commands.file.exportFileDocx',
+  'file.export-file-html': 'commands.file.exportFileHtml',
 
   // File management
   'file.move-file': 'commands.file.moveFile',

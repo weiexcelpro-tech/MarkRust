@@ -147,14 +147,6 @@ const commands: CommandDescriptor[] = [
     id: 'file.export-file',
     subcommands: [
       {
-        id: 'file.export-file-html',
-        description: 'Export as HTML',
-        execute: async() => {
-          await delay(50)
-          bus.emit('showExportDialog', 'styledHtml')
-        }
-      },
-      {
         id: 'file.export-file-pdf',
         description: 'Export as PDF',
         execute: async() => {
@@ -168,6 +160,14 @@ const commands: CommandDescriptor[] = [
         execute: async() => {
           await delay(50)
           bus.emit('showExportDialog', 'docx')
+        }
+      },
+      {
+        id: 'file.export-file-html',
+        description: 'Export as HTML',
+        execute: async() => {
+          await delay(50)
+          bus.emit('showExportDialog', 'html')
         }
       }
     ]

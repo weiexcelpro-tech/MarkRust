@@ -216,7 +216,22 @@ pub fn resolve_image_path(src: &str, base_dir: &str) -> Option<PathBuf> {
     if src.starts_with("data:") {
         return None;
     }
-    // 远程 URL — 不解析为文件路径
+    // Windows asset URL: http://asset.localhost/<encoded-path> — muya 在 Windows 上生成
+    if let Some(rest) = src.strip_prefix("http://asset.localhost/") {
+        let decoded = percent_decode(rest);
+        let path = Path::new(&decoded);
+        if path.is_absolute() {
+            return Some(path.to_path_buf());
+        }
+        // Relative path under base_dir
+        let base = Path::new(base_dir);
+        return if base.is_dir() {
+            Some(base.join(path))
+        } else {
+            base.parent().map(|p| p.join(path))
+        };
+    }
+    // 远程 URL（非 asset.localhost）— 不解析为文件路径
     if src.starts_with("http://") || src.starts_with("https://") {
         return None;
     }
@@ -306,7 +321,9 @@ pub async fn image_to_data_uri(
     let (raw_bytes, _path, original_mime) = if src.starts_with("data:") {
         let (bytes, mime) = decode_data_uri(&src)?;
         (bytes, PathBuf::new(), mime)
-    } else if src.starts_with("http://") || src.starts_with("https://") {
+    } else if (src.starts_with("http://") || src.starts_with("https://"))
+        && !src.starts_with("http://asset.localhost/")
+    {
         // 远程 URL：使用 reqwest 下载
         let resp = reqwest::get(&src).await
             .map_err(|e| AppError::Other(format!("下载远程图片失败: {}", e)))?;

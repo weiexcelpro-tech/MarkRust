@@ -1336,7 +1336,7 @@ const handleExport = async (options: unknown) => {
   const opts = options as ExportOptions
   const { type, headerFooterStyled, htmlTitle } = opts
 
-  if (!/^pdf|print|styledHtml|docx$/.test(type)) {
+  if (!/^pdf|print|styledHtml|html|docx$/.test(type)) {
     throw new Error(`Invalid type to export: "${type}".`)
   }
 
@@ -1393,6 +1393,33 @@ const handleExport = async (options: unknown) => {
         log.error('Failed to export document:', err)
         notice.notify({
           title: t('editor.export.failed', { type: htmlTitle || 'html' }),
+          type: 'error',
+          message:
+            (err as { message?: string } | null | undefined)?.message ?? t('editor.export.error')
+        })
+      }
+      break
+    }
+    case 'html': {
+      try {
+        // v2.0: 独立 HTML 导出 — 强制自包含（base64 嵌图），产出单文件可移植 HTML
+        // 与 styledHtml 区别：强制 embedImages=true，不依赖偏好设置，确保任意浏览器直接打开
+        const content = await exportStyledHTML(editor.value, markdown, {
+          title: htmlTitle || '',
+          printOptimization: false,
+          extraCss,
+          toc: htmlToc,
+          dir: props.textDirection,
+          pathname: props.pathname || '',
+          embedImages: true,
+          imageResizeMode: preferencesStore.exportImageResize,
+          imageMaxWidth: preferencesStore.exportImageMaxWidth
+        })
+        editorStore.EXPORT({ type, content, filename: htmlTitle || '', pathname: props.pathname || '' })
+      } catch (err) {
+        log.error('Failed to export HTML:', err)
+        notice.notify({
+          title: t('editor.export.failed', { type: 'HTML' }),
           type: 'error',
           message:
             (err as { message?: string } | null | undefined)?.message ?? t('editor.export.error')

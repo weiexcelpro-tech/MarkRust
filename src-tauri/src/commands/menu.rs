@@ -172,6 +172,9 @@ fn build_file_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::men
     // 构建 "Open Recent" 子菜单
     let open_recent_submenu = build_open_recent_menu(app, locale)?;
 
+    // 构建 "Export" 子菜单（PDF / DOCX / HTML）
+    let export_submenu = build_export_menu(app, locale)?;
+
     let submenu = SubmenuBuilder::new(app, t("menu.file.file", locale))
         .item(&text_item(app, "file.new-window", t("menu.file.newWindow", locale), "Ctrl+N")?)
         .item(&text_item(app, "file.new-tab", t("menu.file.newTab", locale), "Ctrl+T")?)
@@ -185,18 +188,7 @@ fn build_file_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::men
         .item(&text_item(app, "file.save", t("menu.file.save", locale), "Ctrl+S")?)
         .item(&text_item(app, "file.save-as", t("menu.file.saveAs", locale), "Ctrl+Shift+S")?)
         .separator()
-        .item(&text_item(
-            app,
-            "file.export-file-pdf",
-            t("menu.file.exportPdf", locale),
-            "Ctrl+Alt+E",
-        )?)
-        .item(&text_item(
-            app,
-            "file.export-file-docx",
-            t("menu.file.exportDocx", locale),
-            "Ctrl+Alt+Shift+E",
-        )?)
+        .item(&export_submenu)
         .item(&text_item(app, "file.print", t("menu.file.print", locale), "Ctrl+P")?)
         .separator()
         .item(&text_item(app, "file.preferences", t("menu.file.preferences", locale), "Ctrl+,")?)
@@ -250,6 +242,33 @@ fn build_open_recent_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tau
     builder = builder.item(&clear_item);
 
     let submenu = builder.build().map_err(map_err)?;
+    Ok(submenu)
+}
+
+/// 构建 "Export" 子菜单（PDF / DOCX / HTML）。
+/// ID 用连字符格式，与 commands/index.ts、menuBridge findCommand 匹配。
+fn build_export_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::menu::Submenu<tauri::Wry>> {
+    let submenu = SubmenuBuilder::new(app, t("menu.file.export", locale))
+        .item(&text_item(
+            app,
+            "file.export-file-pdf",
+            t("menu.file.exportPdf", locale),
+            "Ctrl+Alt+E",
+        )?)
+        .item(&text_item(
+            app,
+            "file.export-file-docx",
+            t("menu.file.exportDocx", locale),
+            "Ctrl+Alt+Shift+E",
+        )?)
+        .item(&text_item(
+            app,
+            "file.export-file-html",
+            t("menu.file.exportHtml", locale),
+            "",
+        )?)
+        .build()
+        .map_err(map_err)?;
     Ok(submenu)
 }
 
