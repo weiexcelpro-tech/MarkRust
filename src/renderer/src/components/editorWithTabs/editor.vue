@@ -1413,7 +1413,8 @@ const handleExport = async (options: unknown) => {
           pathname: props.pathname || '',
           embedImages: true,
           imageResizeMode: preferencesStore.exportImageResize,
-          imageMaxWidth: preferencesStore.exportImageMaxWidth
+          imageMaxWidth: preferencesStore.exportImageMaxWidth,
+          includeTocSidebar: opts.htmlIncludeTocSidebar === true
         })
         editorStore.EXPORT({ type, content, filename: htmlTitle || '', pathname: props.pathname || '' })
       } catch (err) {

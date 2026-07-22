@@ -313,3 +313,120 @@ describe('导出链路联动：复杂物料 + embedImages:true', () => {
     expect(html).not.toContain('https://v2.tauri.app/_next/static/media/tauri')
   })
 })
+
+// ============================================================================
+// TOC 侧边栏（v2.0）：includeTocSidebar 选项
+// ============================================================================
+describe('TOC 侧边栏 — includeTocSidebar', () => {
+  // happy-dom 下 muya 引擎需要前导段落才会将 ## / ### 渲染为 <hN id="..."> 标签
+  // 首行 # / ## 会被引擎当作文档标题消费掉，不生成 <hN> 元素
+  const HEADING_MD = '正文前导\n\n## 二级标题\n\n### 三级标题\n\n#### 四级标题\n\n更多正文\n'
+
+  it('includeTocSidebar=true 时注入侧边栏结构', async () => {
+    const html = await exportStyledHTML(undefined as any, HEADING_MD, { includeTocSidebar: true })
+
+    // 侧边栏核心结构
+    expect(html).toContain('class="toc-sidebar-layout"')
+    expect(html).toContain('class="toc-sidebar"')
+    expect(html).toContain('class="toc-content"')
+    expect(html).toContain('class="toc-sidebar-toggle"')
+    expect(html).toContain('class="toc-sidebar-nav"')
+  })
+
+  it('includeTocSidebar=true 时注入 CSS 和 JS', async () => {
+    const html = await exportStyledHTML(undefined as any, HEADING_MD, { includeTocSidebar: true })
+
+    // CSS 注入到 <head>
+    expect(html).toContain('toc-sidebar-layout')
+    expect(html).toContain('prefers-color-scheme: dark')
+    // JS 注入到 <body> 末尾（scroll-spy + toggle + click-to-scroll）
+    expect(html).toContain('scrollIntoView')
+    expect(html).toContain('addEventListener')
+    expect(html).toContain('classList.toggle')
+  })
+
+  it('侧边栏包含所有标题的链接', async () => {
+    const html = await exportStyledHTML(undefined as any, HEADING_MD, { includeTocSidebar: true })
+
+    // 提取侧边栏中的链接文本
+    const sidebarMatch = html.match(/class="toc-sidebar-nav"([\s\S]*?)<\/nav>/)
+    expect(sidebarMatch, '侧边栏 nav 应存在').not.toBeNull()
+    const sidebarHtml = sidebarMatch![1]
+
+    // 所有标题文本都应出现在侧边栏中
+    expect(sidebarHtml).toContain('二级标题')
+    expect(sidebarHtml).toContain('三级标题')
+    expect(sidebarHtml).toContain('四级标题')
+
+    // 链接应为 # 锚点
+    expect(sidebarHtml).toMatch(/href="#[^"]+"/)
+  })
+
+  it('侧边栏标题层级缩进正确', async () => {
+    const html = await exportStyledHTML(undefined as any, HEADING_MD, { includeTocSidebar: true })
+
+    // 提取所有 li 的 padding-left
+    const paddings = [...html.matchAll(/padding-left:(\d+)px/g)].map(m => parseInt(m[1], 10))
+    expect(paddings.length, '应至少有 3 个缩进值').toBeGreaterThanOrEqual(3)
+    // 第一个（minLevel）缩进应最小，后续递增
+    expect(paddings[0]).toBeLessThanOrEqual(paddings[1])
+    expect(paddings[1]).toBeLessThanOrEqual(paddings[2])
+  })
+
+  it('includeTocSidebar=false（默认）时不注入侧边栏', async () => {
+    const html = await exportStyledHTML(undefined as any, HEADING_MD, {})
+
+    // 不应包含侧边栏结构
+    expect(html).not.toContain('toc-sidebar-layout')
+    expect(html).not.toContain('toc-sidebar-toggle')
+    expect(html).not.toContain('toc-sidebar-nav')
+  })
+
+  it('includeTocSidebar=true 但无标题时不注入侧边栏', async () => {
+    const md = '只有正文，没有标题\n\n另一段正文\n'
+    const html = await exportStyledHTML(undefined as any, md, { includeTocSidebar: true })
+
+    // 无标题 → buildTocSidebarHtml 返回 '' → 不注入
+    expect(html).not.toContain('toc-sidebar-layout')
+    expect(html).not.toContain('toc-sidebar-toggle')
+  })
+
+  it('侧边栏包含折叠按钮 SVG 图标', async () => {
+    const html = await exportStyledHTML(undefined as any, HEADING_MD, { includeTocSidebar: true })
+
+    expect(html).toContain('toc-sidebar-toggle')
+    expect(html).toContain('<svg')
+    expect(html).toContain('aria-label="Toggle table of contents"')
+  })
+
+  it('侧边栏标题文本为"目录"', async () => {
+    const html = await exportStyledHTML(undefined as any, HEADING_MD, { includeTocSidebar: true })
+
+    expect(html).toContain('toc-sidebar-title')
+    expect(html).toContain('目录')
+  })
+
+  it('includeTocSidebar 与 embedImages 可同时工作', async () => {
+    const md = '正文前导\n\n## 标题\n\n![img](./local.png)\n'
+    const fakePng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+    vi.mocked(invoke).mockResolvedValue([
+      {
+        originalSrc: './local.png',
+        dataUri: fakePng,
+        originalWidth: 10, resizedWidth: 10, originalSize: 10, finalSize: 8, error: null,
+      },
+    ])
+
+    const html = await exportStyledHTML(undefined as any, md, {
+      includeTocSidebar: true,
+      embedImages: true,
+      pathname: '/tmp/test.md',
+    })
+
+    // 侧边栏存在
+    expect(html).toContain('toc-sidebar-layout')
+    // 图片被替换为 base64
+    expect(html).toContain(fakePng)
+    expect(html).not.toContain('./local.png')
+  })
+})

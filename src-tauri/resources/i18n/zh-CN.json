@@ -311,6 +311,8 @@
     "autoNumberingHeadings": "自动编号标题",
     "showFrontMatter": "显示前置元数据",
     "export": "导出…",
+    "htmlIncludeToc": "包含目录侧边栏",
+    "htmlIncludeTocDetail": "在导出的 HTML 左侧添加可折叠的目录侧边栏",
     "options": {
       "pageSizes": {
         "a3": "A3 (297mm x 420mm)",

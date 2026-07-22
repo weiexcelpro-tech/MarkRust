@@ -147,3 +147,162 @@ test.describe('导出 HTML 核心链路（v2.0 修复回归测试）', () => {
     })
   })
 })
+
+/**
+ * TOC 侧边栏选项 (includeTocSidebar) — v2.0 新功能 E2E 测试。
+ *
+ * 验证链路：UI 开关 → handleClicked 传参 → editor.vue case 'html' →
+ * exportStyledHTML(includeTocSidebar) → buildTocSidebarHtml + injectTocSidebar →
+ * fs_write_file 写入带侧边栏的 HTML。
+ *
+ * 注意：当 includeTocSidebar=true 但文档无标题时，buildTocSidebarHtml 返回空
+ * 字符串，侧边栏不会注入。因此"开启侧边栏"测试必须在编辑器中输入多级标题。
+ */
+test.describe('TOC 侧边栏选项 (includeTocSidebar)', () => {
+  /**
+   * 切换到 Page 标签页（TOC 侧边栏开关位于此标签页内）。
+   * 弹窗默认打开 Info 标签页，需手动切换。
+   */
+  async function switchToPageTab(page: Page): Promise<void> {
+    await page.locator('#tab-page').click()
+    // 等 isTabLoading overlay 消失（double-rAF ≈ 32ms + 余量）
+    await page.waitForTimeout(300)
+  }
+
+  /**
+   * 定位 TOC 侧边栏开关（兼容英文/中文/原始 key 三种文本）。
+   */
+  function tocSwitchLocator(page: Page) {
+    return page
+      .locator('.pref-switch-item')
+      .filter({ hasText: /Include table of contents|htmlIncludeToc|目录侧边栏/ })
+  }
+
+  /**
+   * 在编辑器中输入多级标题，供导出测试使用。
+   * muya WYSIWYG 模式下，行首输入 "# " 自动转换为 h1 标题块。
+   */
+  async function typeHeadings(page: Page): Promise<void> {
+    const editor = page.locator('.editor-component.mu-editor')
+    await editor.click()
+    await page.keyboard.type('# First Heading')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('## Second Heading')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('### Third Heading')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Some body text here.')
+    // 等 muya 完成块类型转换和 DOM 渲染
+    await page.waitForTimeout(800)
+  }
+
+  /**
+   * 等待 fs_write_file 被调用并返回解码后的 HTML 字符串。
+   */
+  async function waitForExportHtml(page: Page): Promise<string> {
+    await page.waitForFunction(
+      () =>
+        !!(window as unknown as { __MOCK_INVOKE_LOG__?: Array<{ cmd: string }> })
+          .__MOCK_INVOKE_LOG__?.some((i) => i.cmd === 'fs_write_file'),
+      undefined,
+      { timeout: 15000 }
+    )
+    const invokes = await getRecordedInvokes(page)
+    const fsWriteCall = invokes.find((inv) => inv.cmd === 'fs_write_file')
+    expect(fsWriteCall, 'fs_write_file 应被调用').toBeDefined()
+    const dataArr = (fsWriteCall!.args as { data?: unknown }).data as number[]
+    expect(Array.isArray(dataArr), 'data 应为 number[]').toBe(true)
+    return new TextDecoder().decode(new Uint8Array(dataArr))
+  }
+
+  test('导出弹窗中显示 TOC 侧边栏开关（默认关闭）', async ({ page }) => {
+    await openHtmlExportDialog(page)
+    await switchToPageTab(page)
+    const tocItem = tocSwitchLocator(page)
+    await expect(tocItem).toBeVisible()
+    // 验证默认状态为关闭
+    const switchEl = tocItem.locator('.el-switch')
+    await expect(switchEl).not.toHaveClass(/is-checked/)
+  })
+
+  test('默认关闭时导出的 HTML 不包含侧边栏', async ({ page }) => {
+    await openHtmlExportDialog(page)
+
+    await startRecordingInvokes(page)
+    await page.locator('.print-settings-dialog .button-primary').click()
+
+    const html = await waitForExportHtml(page)
+
+    // 不应包含任何侧边栏相关 CSS 类
+    expect(html).not.toContain('toc-sidebar-layout')
+    expect(html).not.toContain('class="toc-sidebar')
+    expect(html).not.toContain('toc-sidebar-toggle')
+  })
+
+  test('开启且编辑器含多级标题时导出的 HTML 包含完整侧边栏结构', async ({ page }) => {
+    // 1. 在编辑器中输入多级标题
+    await typeHeadings(page)
+
+    // 2. 打开导出弹窗，切换到 Page tab 并开启 TOC 侧边栏开关
+    await openHtmlExportDialog(page)
+    await switchToPageTab(page)
+    const tocItem = tocSwitchLocator(page)
+    const switchEl = tocItem.locator('.el-switch')
+    await switchEl.click()
+    await expect(switchEl).toHaveClass(/is-checked/)
+
+    // 3. 导出
+    await startRecordingInvokes(page)
+    await page.locator('.print-settings-dialog .button-primary').click()
+
+    const html = await waitForExportHtml(page)
+
+    // ---- 断言侧边栏容器结构 ----
+    expect(html).toContain('toc-sidebar-layout')
+    expect(html).toContain('class="toc-sidebar"')
+    expect(html).toContain('toc-sidebar-toggle')
+    expect(html).toContain('toc-sidebar-nav')
+    expect(html).toContain('toc-sidebar-title')
+    expect(html).toContain('目录')
+
+    // ---- 断言侧边栏 CSS 注入到 <head> ----
+    expect(html).toContain('toc-sidebar-layout { display: flex')
+
+    // ---- 断言导航条目 ----
+    // 导航链接格式: <li style="padding-left:Npx"><a href="#id">Text</a></li>
+    const linkMatches = html.match(/<li[^>]*><a href="#[^"]*">/g) || []
+    expect(linkMatches.length, '应至少有 3 个导航链接').toBeGreaterThanOrEqual(3)
+
+    // 导航条目应包含标题文本
+    expect(html).toContain('First Heading')
+    expect(html).toContain('Second Heading')
+    expect(html).toContain('Third Heading')
+
+    // ---- 断言缩进层级（h2 比 h1 缩进更多）----
+    const indentRegex = /<li style="padding-left:(\d+)px"><a href="#([^"]*)">([^<]+)<\/a><\/li>/g
+    const entries: Array<{ indent: number; id: string; text: string }> = []
+    let m: RegExpExecArray | null
+    while ((m = indentRegex.exec(html)) !== null) {
+      entries.push({ indent: parseInt(m[1], 10), id: m[2], text: m[3] })
+    }
+    expect(entries.length).toBeGreaterThanOrEqual(3)
+
+    // h1（First Heading）缩进应最小
+    const firstEntry = entries.find((e) => e.text === 'First Heading')
+    expect(firstEntry, '应找到 First Heading 条目').toBeDefined()
+    // h2（Second Heading）缩进应比 h1 大
+    const secondEntry = entries.find((e) => e.text === 'Second Heading')
+    expect(secondEntry, '应找到 Second Heading 条目').toBeDefined()
+    expect(secondEntry!.indent).toBeGreaterThan(firstEntry!.indent)
+    // h3（Third Heading）缩进应比 h2 大
+    const thirdEntry = entries.find((e) => e.text === 'Third Heading')
+    expect(thirdEntry, '应找到 Third Heading 条目').toBeDefined()
+    expect(thirdEntry!.indent).toBeGreaterThan(secondEntry!.indent)
+
+    console.log('[E2E toc-sidebar] 导航条目数:', entries.length)
+    console.log('[E2E toc-sidebar] 缩进层级:', entries.map((e) => `${e.text}=${e.indent}px`).join(', '))
+  })
+})

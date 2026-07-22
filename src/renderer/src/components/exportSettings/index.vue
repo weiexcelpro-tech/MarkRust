@@ -38,6 +38,12 @@
               :emit-time="0"
               :on-change="(value: unknown) => onSelectChange('htmlTitle', value)"
             />
+            <bool
+              :description="t('exportSettings.htmlIncludeToc')"
+              :detailed-description="t('exportSettings.htmlIncludeTocDetail')"
+              :bool="htmlIncludeTocSidebar"
+              :on-change="(value: unknown) => onSelectChange('htmlIncludeTocSidebar', value)"
+            />
           </div>
 
           <!-- PDF/Print -->
@@ -349,6 +355,7 @@ const headerFooterStyled = ref(true)
 const headerFooterFontSize = ref(12)
 const tocTitle = ref('')
 const tocIncludeTopHeading = ref(true)
+const htmlIncludeTocSidebar = ref(false)
 
 // --- Tab-switch loading indicator ---
 // Fast switches (< 300 ms) never show the spinner;
@@ -404,7 +411,8 @@ const persistableSettings: Record<string, Ref<unknown>> = {
   headerFooterStyled,
   headerFooterFontSize,
   tocTitle,
-  tocIncludeTopHeading
+  tocIncludeTopHeading,
+  htmlIncludeTocSidebar
 }
 
 const restoreExportSettings = () => {
@@ -494,6 +502,7 @@ const handleClicked = () => {
 
   if (!isPrintable.value) {
     options.htmlTitle = htmlTitle.value
+    options.htmlIncludeTocSidebar = htmlIncludeTocSidebar.value
   }
 
   if (fontSettingsOverwrite.value) {
@@ -561,7 +570,8 @@ const onSelectChange = (key: string, value: unknown) => {
     headerFooterStyled,
     headerFooterFontSize,
     tocIncludeTopHeading,
-    tocTitle
+    tocTitle,
+    htmlIncludeTocSidebar
   }
   if (key in state) {
     state[key]!.value = value

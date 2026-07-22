@@ -311,6 +311,8 @@
       "title": "Table of Contents"
     },
     "export": "Export...",
+    "htmlIncludeToc": "Include table of contents sidebar",
+    "htmlIncludeTocDetail": "Add a collapsible sidebar with table of contents on the left side of the exported HTML",
     "options": {
       "pageSizes": {
         "a3": "A3 (297mm x 420mm)",
