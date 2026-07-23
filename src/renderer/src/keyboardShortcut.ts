@@ -179,7 +179,12 @@ const toAccelerator = (e: KeyboardEvent): string => {
 const isTextInputTarget = (target: EventTarget | null): boolean => {
   if (!(target instanceof HTMLElement)) return false
   const tag = target.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    // CodeMirror source-code editor uses a hidden <textarea>;
+    // like muya's contenteditable, it should NOT block shortcuts.
+    if (target.closest('.source-code')) return false
+    return true
+  }
   // contenteditable inside muya editor should NOT be blocked
   if (target.isContentEditable) {
     return !target.closest('.mu-editor')
@@ -220,19 +225,22 @@ const onKeyDown = (event: KeyboardEvent): void => {
   const menuId = ACCELERATOR_TO_MENU_ID[accelerator]
   if (!menuId) return
 
+  // If target is a text input and this shortcut is NOT in the always-fire
+  // whitelist, skip dispatch entirely (do NOT preventDefault either, so the
+  // input/textarea can still handle the key normally).
+  if (isTextInputTarget(event.target) && !ALWAYS_FIRE.has(menuId)) {
+    return
+  }
+
   // For text-editing shortcuts that the browser/WebView2 handles natively
-  // (Ctrl+B/I/U for rich text editing), we must preventDefault to stop
-  // the browser from applying its own formatting AND stopPropagation to
+  // (Ctrl+B/I/U for rich text editing), we must preventDefault to stop the
+  // browser from applying its own formatting AND stopPropagation to
   // prevent muya from receiving a stale keydown.
   //
   // For non-editing shortcuts (Ctrl+S/O/F etc.), preventDefault stops the
   // browser default (e.g. Ctrl+S would trigger browser save dialog).
   event.preventDefault()
   event.stopPropagation()
-
-  if (isTextInputTarget(event.target) && !ALWAYS_FIRE.has(menuId)) {
-    return
-  }
 
   console.log('[keyboardShortcut] dispatch:', accelerator, '→', menuId)
   handleMenuClick(menuId)

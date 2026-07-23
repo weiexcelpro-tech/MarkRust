@@ -17,6 +17,7 @@
         :muya-index-cursor="muyaIndexCursor"
         :text-direction="textDirection"
       />
+      <editor-search />
     </div>
     <tab-notifications />
   </div>
@@ -28,6 +29,7 @@ import { storeToRefs } from 'pinia'
 import Tabs from './tabs.vue'
 import Editor from './editor.vue'
 import SourceCode from './sourceCode.vue'
+import EditorSearch from '../search/index.vue'
 import TabNotifications from './notifications.vue'
 
 defineProps<{

@@ -137,7 +137,7 @@ export const MOCK_INVOKE_RESPONSES: Record<string, unknown> = {
     finalSize: null,
     error: null,
   },
-  updater_check_latest: { has_update: false, latest_version: '1.1.2', download_url: '', notes: '' },
+  updater_check_latest: { has_update: false, latest_version: '1.1.3', download_url: '', notes: '' },
   clipboard_read_text: '',
   clipboard_write_text: null,
   clipboard_guess_file_path: null,
