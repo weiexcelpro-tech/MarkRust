@@ -32,14 +32,14 @@
       class="right-column"
     >
       <tree
-        v-if="rightColumn === 'files'"
+        v-show="rightColumn === 'files'"
         :project-tree="projectTree"
         :opened-files="openedFiles"
         :tabs="tabs"
       />
-      <side-bar-search v-else-if="rightColumn === 'search'" />
-      <toc v-else-if="rightColumn === 'toc'" />
-      <side-bar-settings v-else-if="rightColumn === 'settings'" />
+      <side-bar-search v-show="rightColumn === 'search'" />
+      <toc v-show="rightColumn === 'toc'" />
+      <side-bar-settings v-if="rightColumn === 'settings'" />
     </div>
     <div
       v-show="rightColumn"
@@ -118,7 +118,6 @@ onMounted(() => {
 })
 
 const handleLeftIconClick = (name: string): void => {
-  console.log('[SB-DBG] handleLeftIconClick called, name=%s, rightColumn=%s', name, rightColumn.value)
   if (rightColumn.value === name) {
     const widthToPersist = finalSideBarWidth.value
     layoutStore.SET_LAYOUT({ rightColumn: '' })
@@ -131,7 +130,6 @@ const handleLeftIconClick = (name: string): void => {
       layoutStore.CHANGE_SIDE_BAR_WIDTH(finalSideBarWidth.value)
     }
   }
-  console.log('[SB-DBG] after handleLeftIconClick, rightColumn=%s', rightColumn.value)
 }
 </script>
 

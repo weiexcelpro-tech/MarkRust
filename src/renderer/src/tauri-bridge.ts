@@ -124,7 +124,6 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
   'mt::cmd-open-file': async () => {
     const path = await invoke<string | null>('dialog_open_file')
     if (!path) return
-    console.log('[tauri-bridge] file selected:', path)
     const result = await invoke<MarkdownFileResult>('fs_read_markdown', { path })
     localEmit('mt::open-new-tab', result, {}, true)
     invoke('recent_add', { filePath: path }).catch(() => {})

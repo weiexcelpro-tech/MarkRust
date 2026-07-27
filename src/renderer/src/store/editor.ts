@@ -922,9 +922,12 @@ export const useEditorStore = defineStore('editor', {
         'mt::open-new-tab',
         (_, markdownDocument, options = {}, selected = true) => {
           if (markdownDocument) {
-            // 需求1: 打开 .md 文件时 sidebar 默认进入 content(toc) tab
+            // Only switch to TOC sidebar if it's not already visible — avoid
+            // redundant SET_LAYOUT calls that trigger IPC + preference writes.
             const layoutStore = useLayoutStore()
-            layoutStore.SET_LAYOUT({ rightColumn: 'toc', showSideBar: true })
+            if (!layoutStore.showSideBar || layoutStore.rightColumn !== 'toc') {
+              layoutStore.SET_LAYOUT({ rightColumn: 'toc', showSideBar: true })
+            }
             // Create tab with content.
             this.NEW_TAB_WITH_CONTENT({ markdownDocument, options, selected })
           } else {

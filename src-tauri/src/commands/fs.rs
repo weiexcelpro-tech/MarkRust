@@ -163,7 +163,23 @@ pub fn fs_readdir(path: String) -> AppResult<Vec<String>> {
 /// - `CRLF_LINE_ENDING_REG = /\r\n/` → 检测 CRLF
 /// - 既非 LF 又非 CRLF（如独自 `\r`）→ `isUnknownEnding`，按首选 EOL 处理
 #[tauri::command]
-pub fn fs_read_markdown(
+pub async fn fs_read_markdown(
+    path: String,
+    preferred_eol: Option<String>,
+    auto_guess_encoding: Option<bool>,
+    trim_trailing_newline: Option<i32>,
+    auto_normalize_line_endings: Option<bool>,
+) -> AppResult<MarkdownFileResult> {
+    // Spawn blocking task to avoid blocking Tauri main thread.
+    // File I/O + encoding detection + line-ending scan can be expensive for large files.
+    let result = tokio::task::spawn_blocking(move || -> AppResult<MarkdownFileResult> {
+        fs_read_markdown_inner(path, preferred_eol, auto_guess_encoding, trim_trailing_newline, auto_normalize_line_endings)
+    }).await.map_err(|e| crate::error::AppError::Other(e.to_string()))?;
+    result
+}
+
+/// Inner implementation of fs_read_markdown, callable from blocking context.
+pub fn fs_read_markdown_inner(
     path: String,
     preferred_eol: Option<String>,
     auto_guess_encoding: Option<bool>,
