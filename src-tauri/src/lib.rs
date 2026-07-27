@@ -31,8 +31,20 @@ pub fn run() {
                     let _ = main_window.emit("mt::open-file-from-second-instance", &path);
                 }
             }
+            // On Windows, a background process cannot bring its window to the foreground
+            // due to OS security restrictions (SetForegroundWindow lock). The workaround
+            // is to briefly toggle always-on-top, then restore focus.
             if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.show();
+                let _ = main_window.set_always_on_top(true);
                 let _ = main_window.set_focus();
+                // Restore always-on-top after a brief delay so the window actually
+                // comes to foreground first.
+                let win = main_window.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    let _ = win.set_always_on_top(false);
+                });
             }
         }))
         .setup(|app| {

@@ -181,6 +181,37 @@ export const addThemeStyle = (theme: string): void => {
     document.body.classList.add('dark')
   }
 
+  // Sync Element Plus CSS variables with the current theme so that EP components
+  // (radio labels, select text, input placeholders, etc.) are readable in dark themes.
+  // Without this, EP uses its own hardcoded --el-text-color-primary (#303133) which
+  // is near-black and invisible on dark backgrounds.
+  const elThemeStyleId = 'el-theme-override'
+  let elStyleEle = document.querySelector(`#${elThemeStyleId}`) as HTMLStyleElement | null
+  if (!elStyleEle) {
+    elStyleEle = document.createElement('style')
+    elStyleEle.id = elThemeStyleId
+    document.head.appendChild(elStyleEle)
+  }
+  if (isDarkTheme) {
+    elStyleEle.innerHTML = `:root {
+  --el-text-color-primary: var(--editorColor);
+  --el-text-color-regular: var(--editorColor80);
+  --el-text-color-secondary: var(--editorColor60);
+  --el-text-color-placeholder: var(--editorColor40);
+  --el-text-color-disabled: var(--editorColor30);
+  --el-fill-color-blank: transparent;
+  --el-fill-color-light: var(--editorColor04);
+  --el-bg-color: transparent;
+  --el-bg-color-overlay: var(--editorBgColor);
+  --el-border-color: var(--editorColor10);
+  --el-border-color-light: var(--editorColor10);
+  --el-border-color-lighter: var(--editorColor04);
+}`
+  } else {
+    // Reset to EP defaults for light themes
+    elStyleEle.innerHTML = ''
+  }
+
   // change CodeMirror theme
   const cm = document.querySelector('.CodeMirror')
   if (cm) {
