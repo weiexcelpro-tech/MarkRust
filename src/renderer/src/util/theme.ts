@@ -207,6 +207,15 @@ export const addThemeStyle = (theme: string): void => {
   --el-border-color: var(--editorColor10) !important;
   --el-border-color-light: var(--editorColor10) !important;
   --el-border-color-lighter: var(--editorColor04) !important;
+  /* Pref label color for dark theme */
+  --prefLabelColor: #f8f9fa !important;
+}
+/* Pref description labels — force readable color in dark theme */
+.pref-container .description span,
+.pref-container .description .notes,
+.pref-container .notes {
+  color: #f8f9fa !important;
+  -webkit-text-fill-color: #f8f9fa !important;
 }
 /* EP internal component text overrides */
 .pref-container .el-radio__label,

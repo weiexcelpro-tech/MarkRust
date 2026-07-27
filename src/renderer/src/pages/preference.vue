@@ -60,9 +60,9 @@ onMounted(() => {
 <style>
 .pref-container {
   --prefSideBarWidth: 220px;
-  /* Settings label color: light-theme default (#303133), dark-theme override below.
-     This guarantees readable text even if --editorColor CSS variable fails to load. */
-  --prefLabelColor: #303133;
+  /* Settings label color is now handled via JS-injected CSS in addThemeStyle().
+     Do NOT define --prefLabelColor here — Vue SFC styles may get scoped by Vite
+     and the CSS variable won't be visible to prefComponents at runtime. */
 
   width: 100vw;
   height: 100vh;
@@ -145,11 +145,6 @@ onMounted(() => {
   }
 }
 
-/* Dark theme: override pref label color to near-white.
-   This is a safety net — if --editorColor is correctly set it will win
-   via the inline style, but if CSS variable loading fails this fallback
-   keeps labels readable on dark backgrounds. */
-body.dark .pref-container {
-  --prefLabelColor: #f8f9fa;
-}
+/* Dark theme: pref label colors are now handled via JS-injected CSS in addThemeStyle().
+   See el-theme-override style block for the .pref-container .description span rules. */
 </style>

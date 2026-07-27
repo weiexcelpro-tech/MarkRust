@@ -8,7 +8,7 @@
       class="description"
       style="display: flex; align-items: center"
     >
-      <span style="color: var(--prefLabelColor)">{{ description }}:</span>
+      <span>{{ description }}:</span>
       <LinkIcon
         v-if="more"
         :size="14"
@@ -31,7 +31,6 @@
     <div
       v-if="notes"
       class="notes"
-      style="color: var(--prefLabelColor)"
     >
       {{ notes }}
     </div>
