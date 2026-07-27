@@ -7,12 +7,13 @@
       class="description"
       style="display: flex; align-items: center; justify-content: space-between"
     >
-      <span>{{ description }}:</span>
+      <span style="color: var(--prefLabelColor)">{{ description }}:</span>
       <div style="display: flex; align-items: center">
         <span
           v-if="selectValue"
           class="value"
-        >{{ selectValue }} <span v-if="unit">{{ unit }}</span></span>
+          style="color: var(--editorColor80)"
+        >{{ selectValue }} <span v-if="unit" style="color: var(--editorColor80)">{{ unit }}</span></span>
         <LinkIcon
           v-if="more"
           :size="14"

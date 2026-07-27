@@ -9,6 +9,7 @@
     <div
       v-if="notes"
       class="notes"
+      style="color: var(--prefLabelColor)"
     >
       {{ notes }}
     </div>

@@ -4,7 +4,7 @@
     :class="{ 'ag-underdevelop': disable }"
   >
     <div class="description">
-      <span>{{ description }}:</span>
+      <span style="color: var(--prefLabelColor)">{{ description }}:</span>
       <LinkIcon
         v-if="more"
         :size="14"

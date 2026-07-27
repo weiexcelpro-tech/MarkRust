@@ -194,8 +194,7 @@ export const addThemeStyle = (theme: string): void => {
   }
   if (isDarkTheme) {
     elStyleEle.innerHTML = `:root,
-:root:root,
-.pref-container {
+:root:root {
   --el-text-color-primary: var(--editorColor) !important;
   --el-text-color-regular: var(--editorColor80) !important;
   --el-text-color-secondary: var(--editorColor60) !important;
@@ -209,10 +208,7 @@ export const addThemeStyle = (theme: string): void => {
   --el-border-color-light: var(--editorColor10) !important;
   --el-border-color-lighter: var(--editorColor04) !important;
 }
-/* Direct text color overrides for prefComponents that inherit EP's
-   hardcoded #303133 via CSS reset or specificity */
-.pref-container .description,
-.pref-container .description span,
+/* EP internal component text overrides */
 .pref-container .el-radio__label,
 .pref-container .el-select__placeholder,
 .pref-container .el-select__selected-item,
@@ -220,13 +216,7 @@ export const addThemeStyle = (theme: string): void => {
 .pref-container .el-input__wrapper,
 .pref-container .el-checkbox__label,
 .pref-container .el-form-item__label,
-.pref-container .el-radio-group .el-radio,
-.pref-container .pref-switch-item,
-.pref-container .pref-switch-item span,
-.pref-container .pref-compound-item,
-.pref-container .pref-compound-item span,
-.pref-container .pref-select-item,
-.pref-container .pref-range-item {
+.pref-container .el-radio-group .el-radio {
   color: var(--editorColor) !important;
   -webkit-text-fill-color: var(--editorColor) !important;
 }

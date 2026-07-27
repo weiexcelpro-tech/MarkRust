@@ -60,6 +60,9 @@ onMounted(() => {
 <style>
 .pref-container {
   --prefSideBarWidth: 220px;
+  /* Settings label color: light-theme default (#303133), dark-theme override below.
+     This guarantees readable text even if --editorColor CSS variable fails to load. */
+  --prefLabelColor: #303133;
 
   width: 100vw;
   height: 100vh;
@@ -140,5 +143,13 @@ onMounted(() => {
     margin-top: var(--titleBarHeight);
     padding-top: 0;
   }
+}
+
+/* Dark theme: override pref label color to near-white.
+   This is a safety net — if --editorColor is correctly set it will win
+   via the inline style, but if CSS variable loading fails this fallback
+   keeps labels readable on dark backgrounds. */
+body.dark .pref-container {
+  --prefLabelColor: #f8f9fa;
 }
 </style>
