@@ -193,19 +193,50 @@ export const addThemeStyle = (theme: string): void => {
     document.head.appendChild(elStyleEle)
   }
   if (isDarkTheme) {
-    elStyleEle.innerHTML = `:root {
-  --el-text-color-primary: var(--editorColor);
-  --el-text-color-regular: var(--editorColor80);
-  --el-text-color-secondary: var(--editorColor60);
-  --el-text-color-placeholder: var(--editorColor40);
-  --el-text-color-disabled: var(--editorColor30);
-  --el-fill-color-blank: transparent;
-  --el-fill-color-light: var(--editorColor04);
-  --el-bg-color: transparent;
-  --el-bg-color-overlay: var(--editorBgColor);
-  --el-border-color: var(--editorColor10);
-  --el-border-color-light: var(--editorColor10);
-  --el-border-color-lighter: var(--editorColor04);
+    elStyleEle.innerHTML = `:root,
+:root:root,
+.pref-container {
+  --el-text-color-primary: var(--editorColor) !important;
+  --el-text-color-regular: var(--editorColor80) !important;
+  --el-text-color-secondary: var(--editorColor60) !important;
+  --el-text-color-placeholder: var(--editorColor40) !important;
+  --el-text-color-disabled: var(--editorColor30) !important;
+  --el-fill-color-blank: transparent !important;
+  --el-fill-color-light: var(--editorColor04) !important;
+  --el-bg-color: transparent !important;
+  --el-bg-color-overlay: var(--editorBgColor) !important;
+  --el-border-color: var(--editorColor10) !important;
+  --el-border-color-light: var(--editorColor10) !important;
+  --el-border-color-lighter: var(--editorColor04) !important;
+}
+/* Direct text color overrides for prefComponents that inherit EP's
+   hardcoded #303133 via CSS reset or specificity */
+.pref-container .description,
+.pref-container .description span,
+.pref-container .el-radio__label,
+.pref-container .el-select__placeholder,
+.pref-container .el-select__selected-item,
+.pref-container .el-input__inner,
+.pref-container .el-input__wrapper,
+.pref-container .el-checkbox__label,
+.pref-container .el-form-item__label,
+.pref-container .el-radio-group .el-radio,
+.pref-container .pref-switch-item,
+.pref-container .pref-switch-item span,
+.pref-container .pref-compound-item,
+.pref-container .pref-compound-item span,
+.pref-container .pref-select-item,
+.pref-container .pref-range-item {
+  color: var(--editorColor) !important;
+  -webkit-text-fill-color: var(--editorColor) !important;
+}
+/* Select dropdowns also need text color fix */
+.pref-container .el-select-dropdown__item {
+  color: var(--editorColor) !important;
+}
+/* Input placeholders in dark theme */
+.pref-container .el-input__inner::placeholder {
+  color: var(--editorColor40) !important;
 }`
   } else {
     // Reset to EP defaults for light themes
