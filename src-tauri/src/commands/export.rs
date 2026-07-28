@@ -910,6 +910,9 @@ pub async fn markdown_to_docx(req: &ExportDocxRequest) -> AppResult<(Vec<u8>, u3
             }
             Event::End(TagEnd::TableHead) => {
                 current_table_row.push(current_cell_runs.drain(..).collect());
+                // pulldown-cmark 0.12: TableHead 不触发 TableRow 事件，
+                // 必须在此处将 header 行推入 table_rows，否则 header 行丢失
+                table_rows.push(current_table_row.drain(..).collect());
             }
             Event::Start(Tag::TableRow) => {
                 current_cell_runs.clear();
@@ -1097,10 +1100,21 @@ pub async fn export_docx(
     // 2. 弹出保存对话框
     use tauri_plugin_dialog::DialogExt;
 
+    // 从原始文件路径推导默认文件名：ABCDE.md → ABCDE.docx
+    let default_name = if !req.pathname.is_empty() {
+        std::path::Path::new(&req.pathname)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| format!("{}.docx", s))
+            .unwrap_or_else(|| "document.docx".to_string())
+    } else {
+        "document.docx".to_string()
+    };
+
     let file_path = app.dialog()
         .file()
         .add_filter("Word Document", &["docx"])
-        .set_file_name("document.docx")
+        .set_file_name(&default_name)
         .blocking_save_file()
         .ok_or_else(|| AppError::Other("用户取消保存".to_string()))?;
 
