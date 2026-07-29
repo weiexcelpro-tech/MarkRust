@@ -364,7 +364,7 @@ const noop = () => {}
   position: absolute;
   width: 400px;
   padding: 0;
-  top: 0;
+  top: 80px;
   right: 20px;
   border-radius: 3px;
   box-shadow: var(--floatShadow);
