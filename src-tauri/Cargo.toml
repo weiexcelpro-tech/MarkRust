@@ -56,6 +56,15 @@ docx-rs = "0.4"
 base64 = "0.22"
 image = "0.25"
 
+# v2.0: PDF 静默导出（WebView2 PrintToPdf，Windows only）
+[target.'cfg(target_os = "windows")'.dependencies]
+webview2-com = "0.38"
+windows-core = "0.61"
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 [features]
 # Release builds MUST enable this feature so that tauri embeds frontend assets
 # (frontendDist) and loads them via the custom protocol, instead of connecting

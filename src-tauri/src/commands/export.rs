@@ -1,10 +1,11 @@
-//! 导出命令模块：DOCX 导出 + 图片 base64 内嵌 + 图片自动缩放。
+//! 导出命令模块：DOCX 导出 + PDF 导出 + 图片 base64 内嵌 + 图片自动缩放。
 //!
 //! v2.0 新增特性（对应 PRD F1/F2/F3）：
 //! - F1: export_docx          — Markdown → DOCX（Rust 后端生成，docx-rs 0.4）
 //! - F2: resize_if_needed     — 图片自动缩放（auto 模式下超宽图等比缩小至 PNG）
 //! - F3: image_to_data_uri    — 单张图片读取 → base64 data URI
 //!        images_to_data_uris — 批量转换（并行，含可选缩放）
+//! - F4: export_pdf           — WebView2 PrintToPdf 静默生成 PDF（不弹打印对话框）
 
 use std::fs;
 use std::io::Cursor;
@@ -1140,6 +1141,139 @@ pub async fn export_docx(
 // markdown_to_docx 是 async 函数但不依赖 AppHandle，通过 poll_once 即可测试。
 // export_docx 依赖 AppHandle（弹保存对话框），不在单元测试覆盖范围。
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// PDF 静默导出（Windows only：WebView2 ICoreWebView2_7::PrintToPdf）
+// ---------------------------------------------------------------------------
+
+/// 前端调用 export_pdf 时的请求参数。
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportPdfRequest {
+    /// 保存路径（由前端 dialog_save_file 确定）
+    pub save_path: String,
+}
+
+/// PDF 导出结果。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportPdfResult {
+    pub path: String,
+    pub size: u64,
+}
+
+/// 静默导出当前 WebView 内容为 PDF。
+///
+/// 流程：
+/// 1. 前端通过 printService.renderMarkdown() 将带样式的 HTML 挂载到 DOM
+/// 2. 前端调用 export_pdf 命令，传入 save_path
+/// 3. 后端通过 with_webview 获取 ICoreWebView2_7::PrintToPdf
+/// 4. WebView2 将当前页面渲染为 PDF 并写入 save_path
+/// 5. 完成后前端清理 print container
+///
+/// **仅支持 Windows**（依赖 WebView2 API）。
+#[tauri::command]
+pub async fn export_pdf(
+    _app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    req: ExportPdfRequest,
+) -> AppResult<ExportPdfResult> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::sync::mpsc;
+        use std::os::windows::ffi::OsStrExt;
+        use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2_7;
+        use windows_core::Interface;
+
+        let save_path = req.save_path;
+
+        // 将路径编码为 null-terminated wide string（必须在 with_webview 闭包前构建，
+        // 因为闭包需要捕获该 Vec 的指针，且指针必须在 handler 被消费前一直有效）
+        let save_path_wide: Vec<u16> = std::ffi::OsStr::new(&save_path)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+
+        // channel 用于从 with_webview 闭包和 PrintToPdf 回调中传出结果
+        // Tx 会在回调中被 send，Rx 在 with_webview 返回后由 wait_with_pump 等待
+        let (tx, rx) = mpsc::channel::<AppResult<ExportPdfResult>>();
+        let save_path_for_callback = save_path.clone();
+
+        // with_webview 的闭包签名是 FnOnce(PlatformWebview) + Send + 'static，无返回值
+        window.with_webview(move |webview| {
+            let controller = webview.controller();
+            let core_webview = match unsafe { controller.CoreWebView2() } {
+                Ok(cw) => cw,
+                Err(e) => {
+                    let _ = tx.send(Err(AppError::Other(format!("Failed to get CoreWebView2: {e}"))));
+                    return;
+                }
+            };
+
+            let webview7: ICoreWebView2_7 = match core_webview.cast() {
+                Ok(w7) => w7,
+                Err(e) => {
+                    let _ = tx.send(Err(AppError::Other(format!(
+                        "ICoreWebView2_7 cast failed (WebView2 too old?): {e}"
+                    ))));
+                    return;
+                }
+            };
+
+            // PrintToPdfCompletedHandler::create 闭包签名:
+            //   Box<dyn FnOnce(windows::core::Result<()>, bool) -> windows::core::Result<()>>
+            //   Arg1 = Result<(), Error>（HRESULT 自动转换为 Result），Arg2 = bool（BOOL）
+            let tx_for_handler = tx.clone();
+            let handler = webview2_com::PrintToPdfCompletedHandler::create(Box::new(
+                move |result: windows_core::Result<()>, _is_success: bool| {
+                    if let Err(e) = result {
+                        let _ = tx_for_handler.send(Err(AppError::Other(format!("PrintToPdf failed: {e}"))));
+                        return Ok(());
+                    }
+                    // 验证文件是否已创建
+                    match std::fs::metadata(&save_path_for_callback) {
+                        Ok(meta) => {
+                            let _ = tx_for_handler.send(Ok(ExportPdfResult {
+                                path: save_path_for_callback,
+                                size: meta.len(),
+                            }));
+                        }
+                        Err(e) => {
+                            let _ = tx_for_handler.send(Err(AppError::Other(format!(
+                                "PDF file not found after export: {e}"
+                            ))));
+                        }
+                    }
+                    Ok(())
+                },
+            ));
+
+            // PCWSTR::from_raw 指向 save_path_wide 的数据指针
+            // 安全性：save_path_wide 在闭包作用域内，handler 被同步消费前一直有效
+            let pcwstr = windows_core::PCWSTR::from_raw(save_path_wide.as_ptr());
+
+            let print_result = unsafe { webview7.PrintToPdf(pcwstr, None, &handler) };
+
+            if let Err(e) = print_result {
+                let _ = tx.send(Err(AppError::Other(format!("PrintToPdf call failed: {e}"))));
+            }
+            // 如果 PrintToPdf 调用成功，结果将通过 handler 回调 + channel 传出
+        })
+        .map_err(|e| AppError::Other(format!("with_webview failed: {e}")))?;
+
+        // 等待 PrintToPdf 异步完成（pump Windows 消息循环）
+        let result = webview2_com::wait_with_pump(rx)
+            .map_err(|e| AppError::Other(format!("PrintToPdf wait failed: {e}")))?;
+
+        result
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = window;
+        Err(AppError::Other("PDF export is only supported on Windows".to_string()))
+    }
+}
 
 #[cfg(test)]
 mod tests {

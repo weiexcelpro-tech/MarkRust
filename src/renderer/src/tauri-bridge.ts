@@ -294,7 +294,25 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
       fontFamily?: string; fontSize?: number; lineHeight?: number
     }
     if (type === 'pdf') {
-      window.print()
+      // v2.0: PDF 静默导出 — 走 Rust 后端 WebView2 PrintToPdf API
+      // 不弹 Windows 打印对话框，直接在后台生成 PDF
+      try {
+        const baseName = (filename || pathe.basename(pathname || '') || 'export')
+          .replace(/\.(md|markdown)$/i, '')
+        const savePath = await invoke<string | null>('dialog_save_file', {
+          defaultName: `${baseName}.pdf`,
+          exts: ['pdf']
+        })
+        if (!savePath) return
+        const result = await invoke<{
+          path: string
+          size: number
+        }>('export_pdf', { req: { savePath } })
+        localEmit('mt::export-success', { filePath: result.path })
+      } catch (e) {
+        console.error('[tauri-bridge] export_pdf failed:', e)
+        localEmit('mt::export-failure', { error: String(e) })
+      }
       return
     }
     if (type === 'docx') {

@@ -161,8 +161,9 @@ pub fn run() {
             commands::recent::recent_add,
             commands::recent::recent_get,
             commands::recent::recent_clear,
-            // === v2.0: export commands (3) ===
+            // === v2.0: export commands (4) ===
             commands::export::export_docx,
+            commands::export::export_pdf,
             commands::export::image_to_data_uri,
             commands::export::images_to_data_uris,
             // === menu control commands (3) ===
