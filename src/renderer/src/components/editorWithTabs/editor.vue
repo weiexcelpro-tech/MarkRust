@@ -1280,9 +1280,57 @@ const scrollToCords = (y: number) => {
 // Smoothly scroll the editor so `anchor` sits at the standard top offset.
 // Shared by the TOC, search-highlight, and any other "reveal this element"
 // caller so the getBoundingClientRect + animatedScrollTo math lives once.
+//
+// When lazyInlineRender is active, the target block's inline content may not
+// have been patched yet (its DOM is empty/skeleton), so getBoundingClientRect
+// returns an inaccurate position. Flush the block's lazy patch first so the
+// layout is correct before we measure and scroll.
+const flushBlockForElement = (el: Element) => {
+  // Walk up from the element to find the nearest Muya block DOM node
+  // (which has the __MUYA_BLOCK__ property stamped by TreeNode.createDomNode).
+  let node: Element | null = el
+  while (node) {
+    const block = (node as any).__MUYA_BLOCK__
+    if (block && typeof block.flushLazyPatch === 'function') {
+      block.flushLazyPatch()
+      break
+    }
+    node = node.parentElement
+  }
+}
+
+// Flush all unpatched blocks in the container from the top down to the target
+// element. When lazyInlineRender is on, blocks above the viewport remain
+// unpatched (their DOM is empty, height ~0). If only the target block is
+// flushed, its getBoundingClientRect still reports the wrong position because
+// the cumulative height gap from all unpatched blocks above it hasn't been
+// corrected. Walking top-down through .mu-container children ensures every
+// block preceding the target is fully rendered before we measure position.
+const flushAllBlocksToElement = (container: Element, target: Element) => {
+  const muContainer = container.querySelector('.mu-container')
+  if (!muContainer) return
+  for (const child of muContainer.children) {
+    if (child === target || child.contains(target)) {
+      // We've reached (or contain) the target — flush it and stop.
+      const block = (child as any).__MUYA_BLOCK__
+      if (block && typeof block.flushLazyPatch === 'function') {
+        block.flushLazyPatch()
+      }
+      break
+    }
+    // Flush every block before the target so their layout height is correct.
+    const block = (child as any).__MUYA_BLOCK__
+    if (block && typeof block.flushLazyPatch === 'function') {
+      block.flushLazyPatch()
+    }
+  }
+}
+
 const scrollElementIntoView = (anchor: Element | null | undefined, duration = 300) => {
   const container = getScrollContainer()
   if (!container || !anchor) return
+  // Ensure the block's inline content is rendered before measuring position.
+  flushBlockForElement(anchor)
   const { y } = anchor.getBoundingClientRect()
   animatedScrollTo(container, container.scrollTop + y - STANDAR_Y, duration)
 }
@@ -1300,7 +1348,18 @@ const scrollToHighlight = () => {
 const scrollToHeader = (slug: unknown) => {
   const container = getScrollContainer()
   if (!container) return
-  scrollElementIntoView(resolveTocHeadingElement(container, editorStore.listToc, slug))
+  const headingEl = resolveTocHeadingElement(container, editorStore.listToc, slug)
+  if (headingEl) {
+    // Flush ALL blocks between the current viewport and the target heading.
+    // When lazyInlineRender is on, blocks outside the viewport are not patched.
+    // A distant heading's getBoundingClientRect is wrong if intervening blocks
+    // are still unpatched (their heights are 0/skeleton), which shifts every
+    // later element's position. Flushing the target block alone is insufficient
+    // because the cumulative height error of all unpatched blocks above it
+    // can be hundreds of pixels.
+    flushAllBlocksToElement(container, headingEl)
+  }
+  scrollElementIntoView(headingEl)
 }
 
 // Scrolls to a non-heading in-document anchor target (e.g. a custom
@@ -1310,8 +1369,16 @@ const scrollToAnchorElement = (element: unknown) => {
 }
 
 const scrollToElement = (selector: string) => {
-  // Scroll to search highlight word
-  scrollElementIntoView(document.querySelector(selector))
+  // Scroll to search highlight word. Use flushAllBlocksToElement (not just
+  // flushBlockForElement) so that every unpatched block *above* the highlight
+  // is also flushed first — otherwise their zero-height skeletons cause the
+  // target's getBoundingClientRect to report the wrong position.
+  const container = getScrollContainer()
+  const anchor = document.querySelector(selector)
+  if (container && anchor) {
+    flushAllBlocksToElement(container, anchor)
+  }
+  scrollElementIntoView(anchor)
 }
 
 const handleFindAction = (action: unknown) => {

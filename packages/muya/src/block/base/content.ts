@@ -411,6 +411,11 @@ class Content extends TreeNode {
         if (!isMouseEvent(event))
             return;
 
+        // When lazyInlineRender is on, the user might click a block whose inline
+        // content hasn't been patched yet. Flush it so getCursor/setCursor work
+        // on the real DOM (with text nodes) instead of the empty content span.
+        this.flushLazyPatch();
+
         requestAnimationFrame(() => {
             if (event.shiftKey && this.selection.anchorBlock !== this)
                 return;
@@ -533,6 +538,12 @@ class Content extends TreeNode {
         }
 
         if (cursorBlock) {
+            // When lazyInlineRender is on, the target block may not have been
+            // patched yet. Flush it so setCursor/getCursorYOffset see rendered
+            // DOM (with text nodes) instead of the empty skeleton.
+            if (typeof cursorBlock.flushLazyPatch === 'function') {
+                cursorBlock.flushLazyPatch();
+            }
             this.update();
             cursorBlock.setCursor(offset, offset, true);
         }

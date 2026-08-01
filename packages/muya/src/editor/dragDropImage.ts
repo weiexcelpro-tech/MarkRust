@@ -77,6 +77,13 @@ function resolveDropTarget(event: DragEvent): IDropTarget | null {
     if (!anchor || !anchor.domNode)
         return null;
 
+    // When lazyInlineRender is on, the block may not have been patched yet.
+    // Flush it so getBoundingClientRect returns the correct height, allowing
+    // the drop position (above/below) to be calculated correctly.
+    if (block && typeof block.flushLazyPatch === 'function') {
+        block.flushLazyPatch();
+    }
+
     const rect = anchor.domNode.getBoundingClientRect();
 
     return { anchor, position: verticalPosition(event, rect) };

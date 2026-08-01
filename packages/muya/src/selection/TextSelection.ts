@@ -292,7 +292,24 @@ class TextSelection {
     private _listenSelectActions() {
         const { eventCenter, domNode } = this._muya;
 
-        const handleMousedown = () => {
+        const handleMousedown = (event: Event) => {
+            // When lazyInlineRender is on, the block the user clicked may not have
+            // been patched yet (its DOM content is empty). Flush it immediately so
+            // the browser's native selection resolves to the correct text node
+            // instead of the empty content-editable span, which would produce
+            // wrong caret offsets (especially under WebView2, which normalizes
+            // the caret out of zero-height hidden text nodes).
+            if (isMouseEvent(event) && event.target instanceof Element) {
+                let el: Element | null = event.target;
+                while (el && el !== domNode) {
+                    const block = (el as any)[BLOCK_DOM_PROPERTY];
+                    if (block && typeof block.flushLazyPatch === 'function') {
+                        block.flushLazyPatch();
+                        break;
+                    }
+                    el = el.parentElement;
+                }
+            }
             this._selectInfo = {
                 isSelect: true,
                 selection: null,
