@@ -9,6 +9,13 @@ interface ISourceEditor {
 }
 
 /**
+ * The margin-top applied to `.source-code .CodeMirror` via CSS (50px).
+ * `heightAtLine` returns local coordinates inside CodeMirror's scroller, so
+ * we must add this margin when scrolling the outer container.
+ */
+const CODEMIRROR_MARGIN_TOP = 50
+
+/**
  * Scroll the Source Code editor so `line` sits at the TOP of the viewport,
  * animated.
  *
@@ -30,7 +37,7 @@ export function scrollSourceEditorToLine(
   editor.setCursor({ line, ch: 0 }, null, { scroll: false })
 
   if (!scrollContainer) return
-  const top = editor.heightAtLine(line, 'local')
+  const top = editor.heightAtLine(line, 'local') + CODEMIRROR_MARGIN_TOP
   scrollContainer.scrollTo({ top, behavior: 'smooth' })
 }
 

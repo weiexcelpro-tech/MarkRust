@@ -10,6 +10,14 @@ import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useEditorStore } from '@/store/editor'
 import { usePreferencesStore } from '@/store/preferences'
 import { findMarkdownHeadingLine, scrollSourceEditorToLine } from '@/util/sourceModeToc'
+import {
+  cmSearch,
+  cmClearSearchHighlights,
+  cmApplySearchHighlights,
+  cmReplaceCurrent,
+  cmReplaceAll
+} from '@/util/sourceCodeSearch'
+import type { SearchResult, SearchOptions } from '@/util/sourceCodeSearch'
 import { storeToRefs } from 'pinia'
 import codeMirror, { setCursorAtFirstLine, setTextDirection } from '../../codeMirror'
 import { applyBase64Widgets, handleBase64Change } from '../../codeMirror/base64Widget'
@@ -31,6 +39,7 @@ interface MuyaIndexCursorLike {
 const props = defineProps<{
   markdown?: string
   muyaIndexCursor?: unknown
+  sourceCodeCursor?: unknown
   textDirection: string
 }>()
 
@@ -44,13 +53,19 @@ const commitTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const viewDestroyed = ref(false)
 const tabId = ref<string | null>(null)
 
+// Search state for source-code mode (operates on CodeMirror, not muya)
+const searchState = ref<SearchResult>({ index: -1, matches: [], value: '' })
+
 const { theme, sourceCode } = storeToRefs(preferencesStore)
 const { currentFile: currentTab } = storeToRefs(editorStore)
 
-const isValidMuyaIndexCursor = (cursor: unknown): cursor is MuyaIndexCursorLike => {
+const isValidCursorLike = (cursor: unknown): cursor is MuyaIndexCursorLike => {
   const c = cursor as MuyaIndexCursorLike | null | undefined
   return !!(c && c.anchor && c.focus)
 }
+
+// Alias for clarity: same shape, but semantically these are raw CM positions.
+const isValidMuyaIndexCursor = isValidCursorLike
 
 watch(
   () => props.textDirection,
@@ -103,10 +118,15 @@ const prepareTabSwitch = () => {
   if (commitTimer.value) clearTimeout(commitTimer.value)
   if (tabId.value) {
     const { cursor, markdown: newMarkdown } = getMarkdownAndCursor(editor.value)
+    const sourceCodeCursor = {
+      anchor: editor.value.getCursor('anchor'),
+      focus: editor.value.getCursor('head')
+    }
     editorStore.LISTEN_FOR_CONTENT_CHANGE({
       id: tabId.value,
       markdown: newMarkdown,
-      muyaIndexCursor: cursor
+      muyaIndexCursor: cursor,
+      sourceCodeCursor
     })
     tabId.value = null
   }
@@ -116,10 +136,11 @@ interface FileChangePayloadLike {
   id: string
   markdown?: string
   muyaIndexCursor?: unknown
+  sourceCodeCursor?: unknown
 }
 
 const handleFileChange = (payload: unknown) => {
-  const { id, markdown: newMarkdown, muyaIndexCursor } = payload as FileChangePayloadLike
+  const { id, markdown: newMarkdown, muyaIndexCursor, sourceCodeCursor } = payload as FileChangePayloadLike
   if (!editor.value) return
 
   // On same-tab reload (external file change), preserve scroll across
@@ -166,10 +187,14 @@ const handleFileChange = (payload: unknown) => {
     applyBase64Widgets(editor.value)
   }
 
-  // t('editor.sourceCode.cursorNullComment')
-  if (isValidMuyaIndexCursor(muyaIndexCursor)) {
+  // Prefer raw CM cursor (sourceCodeCursor) over adjusted muyaIndexCursor.
+  // `adjustCursor` offsets lines for the Muya engine (e.g. +1 on code fences,
+  // +1 on table separators), which are wrong when used as CM positions.
+  if (isValidCursorLike(sourceCodeCursor)) {
+    const { anchor, focus } = sourceCodeCursor
+    editor.value.setSelection(anchor, focus, { scroll: true })
+  } else if (isValidMuyaIndexCursor(muyaIndexCursor)) {
     const { anchor, focus } = muyaIndexCursor
-
     editor.value.setSelection(anchor, focus, { scroll: true }) // Scroll the focus into view.
   } else if (scrollTargets.length) {
     const restoreScroll = () => {
@@ -288,6 +313,13 @@ const handleImageAction = (payload: unknown) => {
 
 const saveContent = (cm: CMInstance) => {
   const { cursor, markdown: newMarkdown } = getMarkdownAndCursor(cm)
+  // Capture raw CM positions (un-adjusted) for accurate source-code mode
+  // cursor restoration. `adjustCursor` offsets lines for the Muya engine,
+  // which are wrong when used directly as CM positions on restore.
+  const sourceCodeCursor = {
+    anchor: cm.getCursor('anchor'),
+    focus: cm.getCursor('head')
+  }
   // Attention: the cursor may be `{focus: null, anchor: null}` when press `backspace`
   const wordCount = getWordCount(newMarkdown)
   // See "beforeDestroy" note
@@ -297,7 +329,8 @@ const saveContent = (cm: CMInstance) => {
         id: tabId.value,
         markdown: newMarkdown,
         wordCount,
-        muyaIndexCursor: cursor
+        muyaIndexCursor: cursor,
+        sourceCodeCursor
       })
     } else {
       // This may occur during tab switching but should not occur otherwise.
@@ -330,6 +363,60 @@ const handleScrollToHeader = (slug: unknown) => {
   scrollSourceEditorToLine(editor.value, line, sourceCodeContainer.value)
 }
 
+// ---- Source-code mode search/replace (operates on CodeMirror, not muya) ----
+
+const handleSourceSearch = (payload: unknown) => {
+  if (!editor.value) return
+  const { value, opt } = payload as { value: string; opt: SearchOptions }
+  searchState.value = cmSearch(editor.value, value, opt)
+  cmApplySearchHighlights(editor.value, searchState.value, searchState.value.index, sourceCodeContainer.value)
+  // Sync search results to the store so the search UI can display counts
+  editorStore.SEARCH({
+    index: searchState.value.index,
+    matches: searchState.value.matches,
+    value: searchState.value.value
+  })
+}
+
+const handleSourceFindAction = (action: unknown) => {
+  if (!editor.value) return
+  const matches = searchState.value.matches
+  if (matches.length === 0) return
+
+  let idx = searchState.value.index
+  if (action === 'next') {
+    idx = (idx + 1) % matches.length
+  } else if (action === 'prev') {
+    idx = (idx - 1 + matches.length) % matches.length
+  }
+  searchState.value = { ...searchState.value, index: idx }
+  cmApplySearchHighlights(editor.value, searchState.value, idx, sourceCodeContainer.value)
+  // Sync the updated index to the store
+  editorStore.SEARCH({
+    index: idx,
+    matches: searchState.value.matches,
+    value: searchState.value.value
+  })
+}
+
+const handleSourceReplace = (payload: unknown) => {
+  if (!editor.value) return
+  // Search component emits: { value: replacementText, opt: { isSingle, isCaseSensitive, isWholeWord, isRegexp } }
+  const { value: replacement, opt } = payload as { value: string; opt: SearchOptions & { isSingle?: boolean } }
+  const isSingle = opt.isSingle ?? true
+  if (isSingle) {
+    searchState.value = cmReplaceCurrent(editor.value, searchState.value, searchState.value.index, replacement, opt)
+  } else {
+    searchState.value = cmReplaceAll(editor.value, searchState.value, replacement, opt)
+  }
+  cmApplySearchHighlights(editor.value, searchState.value, searchState.value.index, sourceCodeContainer.value)
+  editorStore.SEARCH({
+    index: searchState.value.index,
+    matches: searchState.value.matches,
+    value: searchState.value.value
+  })
+}
+
 onMounted(() => {
   if (!currentTab.value) return
   const { id } = currentTab.value
@@ -340,7 +427,7 @@ onMounted(() => {
   currentTab.value.blocks = undefined
   currentTab.value.cursor = undefined
 
-  const { markdown, muyaIndexCursor, textDirection } = props
+  const { markdown, muyaIndexCursor, sourceCodeCursor, textDirection } = props
   const container = sourceCodeContainer.value
   const codeMirrorConfig: Record<string, unknown> = {
     value: markdown,
@@ -373,6 +460,9 @@ onMounted(() => {
   bus.on('redo', handleRedo)
   bus.on('image-action', handleImageAction)
   bus.on('scroll-to-header', handleScrollToHeader)
+  bus.on('searchValue', handleSourceSearch)
+  bus.on('find-action', handleSourceFindAction)
+  bus.on('replaceValue', handleSourceReplace)
 
   // For some reason, code mirror does not seem to play well with Vue's refs if we reference editor.value directly.
   // See https://github.com/codemirror/codemirror5/issues/6886 - hence, we need to use a local variable first.
@@ -388,7 +478,12 @@ onMounted(() => {
     event.stopPropagation()
   })
 
-  if (isValidMuyaIndexCursor(muyaIndexCursor)) {
+  // Prefer raw CM cursor (sourceCodeCursor) over adjusted muyaIndexCursor.
+  // `adjustCursor` offsets lines for the Muya engine, which are wrong as CM positions.
+  if (isValidCursorLike(sourceCodeCursor)) {
+    const { anchor, focus } = sourceCodeCursor
+    codeMirrorInstance.setSelection(anchor, focus, { scroll: true })
+  } else if (isValidMuyaIndexCursor(muyaIndexCursor)) {
     const { anchor, focus } = muyaIndexCursor
     codeMirrorInstance.setSelection(anchor, focus, { scroll: true })
   } else {
@@ -416,12 +511,25 @@ onBeforeUnmount(() => {
   bus.off('redo', handleRedo)
   bus.off('image-action', handleImageAction)
   bus.off('scroll-to-header', handleScrollToHeader)
+  bus.off('searchValue', handleSourceSearch)
+  bus.off('find-action', handleSourceFindAction)
+  bus.off('replaceValue', handleSourceReplace)
+
+  // Clear search highlights when leaving source-code mode
+  if (editor.value) {
+    cmClearSearchHighlights(editor.value)
+  }
 
   const { cursor, markdown: newMarkdown } = getMarkdownAndCursor(editor.value)
+  const sourceCodeCursor = {
+    anchor: editor.value.getCursor('anchor'),
+    focus: editor.value.getCursor('head')
+  }
   bus.emit('file-changed', {
     id: tabId.value,
     markdown: newMarkdown,
     muyaIndexCursor: cursor,
+    sourceCodeCursor,
     renderCursor: true
   })
 })
@@ -446,6 +554,16 @@ onBeforeUnmount(() => {
 .source-code .CodeMirror-activeline-background,
 .source-code .CodeMirror-activeline-gutter {
   background: var(--floatHoverColor);
+}
+
+/* Source-code mode search highlight styles (operates on CodeMirror markText) */
+.source-code .cm-source-search-highlight {
+  background-color: rgba(255, 200, 0, 0.4);
+  border-radius: 2px;
+}
+.source-code .cm-source-search-highlight-active {
+  background-color: rgba(255, 140, 0, 0.7);
+  border-radius: 2px;
 }
 
 /* v2.0 F4: base64 图片源码折叠占位符样式 */

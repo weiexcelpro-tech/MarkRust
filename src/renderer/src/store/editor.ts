@@ -105,6 +105,7 @@ interface ContentChangePayload {
   wordCount?: IFileState['wordCount']
   cursor?: unknown
   muyaIndexCursor?: unknown
+  sourceCodeCursor?: unknown
   history?: IFileState['history']
   toc?: TocItem[]
   blocks?: unknown
@@ -1389,6 +1390,7 @@ export const useEditorStore = defineStore('editor', {
       wordCount,
       cursor,
       muyaIndexCursor,
+      sourceCodeCursor,
       history,
       toc,
       blocks
@@ -1421,6 +1423,7 @@ export const useEditorStore = defineStore('editor', {
       if (wordCount) tab.wordCount = wordCount
       if (cursor) tab.cursor = cursor
       if (muyaIndexCursor) tab.muyaIndexCursor = muyaIndexCursor
+      if (sourceCodeCursor) tab.sourceCodeCursor = sourceCodeCursor
       if (history) tab.history = history
       if (blocks) tab.blocks = blocks
 
@@ -2017,6 +2020,7 @@ interface BufferedTabState {
   cursor: unknown
   wordCount: IFileState['wordCount']
   muyaIndexCursor: unknown
+  sourceCodeCursor: unknown
   scrollTop: number
 }
 
@@ -2037,6 +2041,7 @@ const createBufferedTabState = (tab: Partial<IFileState> & { id: string }): Buff
     cursor: toSerializableValue(tab.cursor, defaultFileState.cursor),
     wordCount: toSerializableValue(tab.wordCount, defaultFileState.wordCount),
     muyaIndexCursor: toSerializableValue(tab.muyaIndexCursor, defaultFileState.muyaIndexCursor),
+    sourceCodeCursor: toSerializableValue(tab.sourceCodeCursor, null),
     scrollTop: tab.scrollTop ?? defaultFileState.scrollTop
   }
 }

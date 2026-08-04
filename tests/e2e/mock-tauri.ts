@@ -302,9 +302,16 @@ export async function emitTauriEvent(page: Page, event: string, payload?: unknow
  * 此函数通过 emitTauriEvent（走 plugin:event|emit 通道）在 listener 注册后重新触发
  * bootstrap-editor 事件，确保编辑器初始化。
  */
-export async function bootstrapApp(page: Page, options: { gotoUrl?: string; waitForMs?: number } = {}): Promise<void> {
+export async function bootstrapApp(page: Page, options: {
+  gotoUrl?: string;
+  waitForMs?: number;
+  markdownList?: string[];
+  sourceCodeModeEnabled?: boolean;
+} = {}): Promise<void> {
   const url = options.gotoUrl ?? 'http://localhost:1420/'
   const waitForMs = options.waitForMs ?? 3000
+  const markdownList = options.markdownList ?? []
+  const sourceCodeModeEnabled = options.sourceCodeModeEnabled ?? false
   // 使用 'domcontentloaded' 而非默认 'load'：vite dev server 冷启动时首次编译
   // 较慢，'load' 事件（等所有资源）易超时；DOM 就绪即可，后续 waitForTimeout +
   // waitForSelector 会确保 Vue 应用完成初始化。
@@ -313,12 +320,12 @@ export async function bootstrapApp(page: Page, options: { gotoUrl?: string; wait
   // 确保 LISTEN_FOR_BOOTSTRAP_WINDOW 的 ipcRenderer.on('mt::bootstrap-editor') 已注册
   await page.waitForTimeout(waitForMs)
   await emitTauriEvent(page, 'mt::bootstrap-editor', {
-    addBlankTab: true,
-    markdownList: [],
+    addBlankTab: markdownList.length === 0,
+    markdownList,
     lineEnding: 'lf',
     sideBarVisibility: true,
     tabBarVisibility: true,
-    sourceCodeModeEnabled: false,
+    sourceCodeModeEnabled,
   })
   // 等待 tab 创建 + 编辑器渲染
   await page.waitForSelector('.editor-tabs .tabs-container li', { timeout: 10000 })

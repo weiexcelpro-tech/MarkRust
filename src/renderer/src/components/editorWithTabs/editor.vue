@@ -1201,6 +1201,7 @@ const toSearchMatches = (result: unknown) => {
 }
 
 const handleSearch = (payload: unknown) => {
+  if (sourceCode.value) return // sourceCode.vue handles search in source-code mode
   if (!editor.value) return
   const { value, opt } = payload as { value: string; opt: unknown }
   editorStore.SEARCH(toSearchMatches(editor.value.search(value, opt)))
@@ -1208,6 +1209,7 @@ const handleSearch = (payload: unknown) => {
 }
 
 const handReplace = (payload: unknown) => {
+  if (sourceCode.value) return // sourceCode.vue handles replace in source-code mode
   if (!editor.value) return
   const { value, opt } = payload as { value: string; opt: unknown }
   editorStore.SEARCH(toSearchMatches(editor.value.replace(value, opt)))
@@ -1382,6 +1384,7 @@ const scrollToElement = (selector: string) => {
 }
 
 const handleFindAction = (action: unknown) => {
+  if (sourceCode.value) return // sourceCode.vue handles find-action in source-code mode
   if (!editor.value) return
   editorStore.SEARCH(toSearchMatches(editor.value.find(action)))
   scrollToHighlight()

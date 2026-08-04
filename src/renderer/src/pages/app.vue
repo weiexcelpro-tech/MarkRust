@@ -23,6 +23,7 @@
         :markdown="markdown"
         :cursor="cursor"
         :muya-index-cursor="muyaIndexCursor"
+        :source-code-cursor="sourceCodeCursor"
         :source-code="sourceCode"
         :show-tab-bar="showTabBar"
         :text-direction="textDirection"
@@ -94,6 +95,9 @@ const wordCount = computed(() => currentFile.value?.wordCount)
 // downstream prop expects `Object | undefined`. Cast at the boundary.
 const muyaIndexCursor = computed<Record<string, unknown> | undefined>(
   () => currentFile.value?.muyaIndexCursor as Record<string, unknown> | undefined
+)
+const sourceCodeCursor = computed<Record<string, unknown> | undefined>(
+  () => currentFile.value?.sourceCodeCursor as Record<string, unknown> | undefined
 )
 
 const hasCurrentFile = computed<boolean>(() => {

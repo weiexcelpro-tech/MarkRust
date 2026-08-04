@@ -15,6 +15,7 @@
         v-if="sourceCode"
         :markdown="markdown"
         :muya-index-cursor="muyaIndexCursor"
+        :source-code-cursor="sourceCodeCursor"
         :text-direction="textDirection"
       />
       <editor-search />
@@ -39,6 +40,7 @@ defineProps<{
   // caller to widen.
   cursor: unknown
   muyaIndexCursor?: unknown
+  sourceCodeCursor?: unknown
   sourceCode: boolean
   showTabBar: boolean
   textDirection: string
