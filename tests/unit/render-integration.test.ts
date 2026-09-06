@@ -6,7 +6,9 @@ vi.hoisted(() => {
     rgPath: 'rg',
     marktext: { initialState: {}, env: { type: 'editor', debug: false, windowId: 0, paths: {} }, paths: {} },
     electron: { ipcRenderer: { on: vi.fn(), send: vi.fn(), invoke: vi.fn(() => Promise.resolve()), off: vi.fn() } },
-    fileUtils: {}, process: { platform: 'win32' }, commandExists: { exists: vi.fn() },
+    // NOTE: fileUtils 故意不预置 —— tauri-bridge 的注入是 `if (!w.fileUtils)`，
+    // 预置空对象会挡掉真实注入，导致 window.fileUtils.readFile 不存在。
+    process: { platform: 'win32' }, commandExists: { exists: vi.fn() },
     i18nUtils: { loadTranslations: vi.fn() }, ripgrep: {}, uploader: { uploadImage: vi.fn() },
     fonts: { list: vi.fn() },
   })
@@ -14,6 +16,18 @@ vi.hoisted(() => {
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(() => Promise.resolve(null)) }))
 vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(() => Promise.resolve(() => {})), emit: vi.fn(() => Promise.resolve()) }))
+// menuBridge 导入即调用 getVersion()（help.about 前置分支）并在回调里 alert()
+vi.mock('@tauri-apps/api/app', () => ({ getVersion: vi.fn(() => Promise.resolve('1.1.5')) }))
+vi.stubGlobal('alert', vi.fn())
+
+// i18n 链路（vue-i18n → @intlify/*）在 happy-dom 的模块 realm 里读不到
+// process.env（vitest/happy-dom 环境怪癖，WebView2 构建不受影响——vite 构建时
+// 已把 NODE_ENV 替换为字面量）。本文件是导入冒烟测试，mock 掉 i18n 实例即可，
+// 其余真实模块图照常加载。
+vi.mock('../../src/renderer/src/i18n', () => {
+  const i18n = { global: { t: (key: string) => key, locale: 'en' }, install: () => {} }
+  return { default: i18n, i18n, t: (key: string) => key, setLanguage: vi.fn(), getCurrentLanguage: vi.fn(() => 'en') }
+})
 
 describe('关键模块导入集成测试', () => {
   it('tauri-bridge 可导入且注入 window.* 全局对象', async () => {
@@ -48,7 +62,8 @@ describe('关键模块导入集成测试', () => {
   })
 
   it('editor store 可创建（不挂载 Vue）', async () => {
+    // vue/pinia 的 ESM 图首次冷转换较慢（>5s 默认超时），放宽到 30s
     const { useEditorStore } = await import('@/store/editor')
     expect(typeof useEditorStore).toBe('function')
-  })
+  }, 30000)
 })

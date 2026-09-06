@@ -46,9 +46,6 @@ import {
 } from './themeColor'
 import { isLinux } from './index'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ORIGINAL_THEME = '#409EFF'
-
 const patchTheme = (css: string): string => {
   return `@media not print {\n${css}\n}`
 }

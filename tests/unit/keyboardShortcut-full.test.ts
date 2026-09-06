@@ -92,7 +92,9 @@ const ALL_SHORTCUTS: Array<[string, Partial<KeyboardEvent>, string]> = [
   ['Ctrl+Alt+N → paragraph.math-formula', { key: 'n', code: 'KeyN', ctrlKey: true, altKey: true }, 'paragraph.math-formula'],
   ['Ctrl+Alt+H → paragraph.html-block', { key: 'h', code: 'KeyH', ctrlKey: true, altKey: true }, 'paragraph.html-block'],
   ['Ctrl+G → paragraph.order-list', { key: 'g', code: 'KeyG', ctrlKey: true }, 'paragraph.order-list'],
-  ['Ctrl+H → paragraph.bullet-list', { key: 'h', code: 'KeyH', ctrlKey: true }, 'paragraph.bullet-list'],
+  // Ctrl+H was reassigned from bullet-list to replace (VS Code convention);
+  // bullet-list no longer has a Ctrl shortcut (menu access only).
+  ['Ctrl+H → edit.replace', { key: 'h', code: 'KeyH', ctrlKey: true }, 'edit.replace'],
   ['Ctrl+Alt+X → paragraph.task-list', { key: 'x', code: 'KeyX', ctrlKey: true, altKey: true }, 'paragraph.task-list'],
   ['Ctrl+Alt+L → paragraph.loose-list-item', { key: 'l', code: 'KeyL', ctrlKey: true, altKey: true }, 'paragraph.loose-list-item'],
   ['Ctrl+Shift+0 → paragraph.paragraph', { key: '0', code: 'Digit0', ctrlKey: true, shiftKey: true }, 'paragraph.paragraph'],
@@ -157,9 +159,21 @@ describe('keyboardShortcut — 全量快捷键映射测试', () => {
 })
 
 describe('keyboardShortcut — 防护逻辑', () => {
-  it('IME 组合事件不分发', () => {
-    fireKeydown({ key: 's', ctrlKey: true, isComposing: true })
+  it('IME 组合事件（无修饰键）不分发', () => {
+    fireKeydown({ key: 's', isComposing: true })
     expect(handleMenuClickMock).not.toHaveBeenCalled()
+  })
+
+  it('IME 组合事件 + Ctrl 修饰键照常分发（修中文输入法吞 Ctrl+F/H/S）', () => {
+    fireKeydown({ key: 'f', code: 'KeyF', ctrlKey: true, isComposing: true })
+    expect(handleMenuClickMock).toHaveBeenCalledWith('edit.find')
+    fireKeydown({ key: 'h', code: 'KeyH', ctrlKey: true, isComposing: true })
+    expect(handleMenuClickMock).toHaveBeenCalledWith('edit.replace')
+  })
+
+  it('keyCode 229 + Ctrl 修饰键照常分发', () => {
+    fireKeydown({ key: 's', code: 'KeyS', ctrlKey: true, keyCode: 229 })
+    expect(handleMenuClickMock).toHaveBeenCalledWith('file.save')
   })
 
   it('单独修饰键不分发', () => {

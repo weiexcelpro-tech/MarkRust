@@ -77,12 +77,16 @@ describe('Bridge-Rust 参数契约', () => {
   })
 
   it('Bridge 传的参数名 ⊆ Rust 函数参数名', () => {
+    // Tauri 2 自动把 JS 侧 camelCase 参数键映射到 Rust snake_case 形参
+    // （如 preferredEol → preferred_eol、pathA → path_a），所以比较前先归一化。
+    const camelToSnake = (s: string) => s.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())
     const mismatches: string[] = []
     for (const [channel, { cmd, params }] of bridgeInvoke) {
       const rustParams = rustCommands.get(cmd)
       if (!rustParams) continue
       for (const p of params) {
-        if (!rustParams.includes(p)) {
+        const snake = camelToSnake(p)
+        if (!rustParams.includes(p) && !rustParams.includes(snake)) {
           mismatches.push(`${channel} → ${cmd}: bridge 传 '${p}'，Rust 参数为 [${rustParams.join(', ')}]`)
         }
       }

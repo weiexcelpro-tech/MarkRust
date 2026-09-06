@@ -207,6 +207,18 @@ const commands: CommandDescriptor[] = [
     }
   },
   {
+    id: 'edit.copy-as-rich',
+    execute: async() => {
+      focusEditorAndExecute(() => bus.emit('copyAsRich', 'copyAsRich'))
+    }
+  },
+  {
+    id: 'edit.paste-as-plaintext',
+    execute: async() => {
+      focusEditorAndExecute(() => bus.emit('pasteAsPlainText', 'pasteAsPlainText'))
+    }
+  },
+  {
     id: 'edit.find',
     execute: async() => {
       await delay(150)

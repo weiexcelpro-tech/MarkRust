@@ -16,7 +16,9 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }))
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(),
+  // listen() must return a Promise<UnlistenFn> — tauri-bridge chains .catch()
+  // on some listen() calls, so a bare vi.fn() (→ undefined) explodes on import.
+  listen: vi.fn(() => Promise.resolve(() => {})),
   emit: vi.fn(),
 }))
 
@@ -30,6 +32,8 @@ const mockWindowInstance = vi.hoisted(() => ({
   toggleMaximize: vi.fn(),
   setFullscreen: vi.fn(),
   toggleFullscreen: vi.fn(),
+  close: vi.fn(),
+  isFullscreen: vi.fn(() => Promise.resolve(false)),
 }))
 vi.mock('@tauri-apps/api/window', () => ({
   getCurrentWindow: () => mockWindowInstance,
@@ -71,6 +75,8 @@ const noopUnlisten = () => {}
 
 beforeEach(() => {
   vi.mocked(invoke).mockReset()
+  // mockReset 清掉 factory 默认实现；恢复 resolve(null) 避免 invoke(...).catch 链踩空
+  vi.mocked(invoke).mockResolvedValue(null)
   vi.mocked(listen).mockReset()
   vi.mocked(tauriEmit).mockReset()
   // listen 必须返回 Promise<UnlistenFn>，否则 on()/once() 的 then 链路会拿到 undefined。
@@ -84,6 +90,9 @@ beforeEach(() => {
   mockWindowInstance.toggleMaximize.mockReset()
   mockWindowInstance.setFullscreen.mockReset()
   mockWindowInstance.toggleFullscreen.mockReset()
+  mockWindowInstance.close.mockReset()
+  mockWindowInstance.isFullscreen.mockReset()
+  mockWindowInstance.isFullscreen.mockResolvedValue(false)
   mockConfirm.mockReset()
 })
 
@@ -332,7 +341,7 @@ describe('INVOKE_CHANNEL_MAP — other', () => {
 
   it('mt::paths::is-same → invoke("paths_is_same", { path_a, path_b })', async () => {
     await ipcRenderer.invoke('mt::paths::is-same', '/a', '/b')
-    expect(invoke).toHaveBeenCalledWith('paths_is_same', { path_a: '/a', path_b: '/b' })
+    expect(invoke).toHaveBeenCalledWith('paths_is_same', { pathA: '/a', pathB: '/b' })
   })
 
   it('mt::uploader::upload → invoke("uploader_upload", { req })', async () => {
@@ -525,9 +534,9 @@ describe('window.electron.paths', () => {
 // windowControl
 // ============================================================================
 describe('window.electron.windowControl', () => {
-  it('close() → invoke("window_close", { label })', () => {
+  it('close() → getCurrentWindow().close()', () => {
     windowControl.close()
-    expect(invoke).toHaveBeenCalledWith('window_close', expect.objectContaining({ label: expect.any(String) }))
+    expect(mockWindowInstance.close).toHaveBeenCalledTimes(1)
   })
 
   it('isMaximized() → invoke("window_is_maximized", { label })', async () => {
@@ -559,7 +568,8 @@ describe('window.electron.windowControl', () => {
     expect(mockWindowInstance.setFullscreen).toHaveBeenCalledWith(true)
 
     windowControl.toggleFullScreen()
-    expect(mockWindowInstance.toggleFullscreen).toHaveBeenCalledTimes(1)
+    expect(mockWindowInstance.isFullscreen).toHaveBeenCalledTimes(1)
+    expect(mockWindowInstance.setFullscreen).toHaveBeenCalledWith(true)
   })
 
   it('popupApplicationMenu(position) → emit("renderer:mt::menu::popup-application", { position })', () => {
@@ -613,9 +623,9 @@ describe('window.ripgrep', () => {
     expect(invoke).toHaveBeenCalledWith('rg_start', { req: { query: 'foo' } })
   })
 
-  it('cancel(id) → emit("rg_cancel", { search_id })', () => {
+  it('cancel(id) → invoke("rg_cancel", { searchId })', async () => {
     ripgrep.cancel('abc')
-    expect(tauriEmit).toHaveBeenCalledWith('rg_cancel', { search_id: 'abc' })
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('rg_cancel', { searchId: 'abc' }))
   })
 
   it('onMatch / onProgress / onDone / onError / onCancelled 注册到对应事件', () => {
@@ -732,7 +742,7 @@ describe('localEmit (via SEND_CHANNEL_EMIT_MAP)', () => {
   it('send("mt::cmd-open-file") 读取文件后 localEmit("mt::open-new-tab", payload, {}, true)', async () => {
     vi.mocked(invoke)
       .mockResolvedValueOnce('/resolved/file.md')
-      .mockResolvedValueOnce('# hello')
+      .mockResolvedValueOnce({ markdown: '# hello', filename: 'file.md', pathname: '/resolved/file.md', isMixedLineEndings: false })
     const cb = vi.fn()
     ipcRenderer.on('mt::open-new-tab', cb)
 
@@ -740,7 +750,8 @@ describe('localEmit (via SEND_CHANNEL_EMIT_MAP)', () => {
 
     await vi.waitFor(() => expect(cb).toHaveBeenCalled())
     expect(invoke).toHaveBeenCalledWith('dialog_open_file')
-    expect(invoke).toHaveBeenCalledWith('fs_read_file', { path: '/resolved/file.md', encoding: 'utf-8' })
+    expect(invoke).toHaveBeenCalledWith('fs_read_markdown', { path: '/resolved/file.md' })
+    expect(invoke).toHaveBeenCalledWith('recent_add', { filePath: '/resolved/file.md' })
     // 源码 localEmit('mt::open-new-tab', payload, {}, true) — 4 参数；用 calls[0] 检查前两参
     const callArgs = cb.mock.calls[0]!
     expect(callArgs[0]).toMatchObject({ __local: true })
@@ -764,9 +775,9 @@ describe('localEmit (via SEND_CHANNEL_EMIT_MAP)', () => {
 // SEND_CHANNEL_EMIT_MAP — emit / invoke 直转
 // ============================================================================
 describe('SEND_CHANNEL_EMIT_MAP', () => {
-  it('send("mt::rg::cancel", id) → emit("rg_cancel", { search_id })', () => {
+  it('send("mt::rg::cancel", id) → invoke("rg_cancel", { searchId })', async () => {
     ipcRenderer.send('mt::rg::cancel', 'search-123')
-    expect(tauriEmit).toHaveBeenCalledWith('rg_cancel', { search_id: 'search-123' })
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('rg_cancel', { searchId: 'search-123' }))
   })
 
   it('send("mt::clipboard::write-text", t) → invoke("clipboard_write_text", { text })', async () => {
@@ -806,7 +817,7 @@ describe('SEND_CHANNEL_EMIT_MAP — window & preferences & updater', () => {
 
     ipcRenderer.send('mt::set-user-preference', { theme: 'dark' })
     await vi.waitFor(() => expect(cb).toHaveBeenCalled())
-    expect(invoke).toHaveBeenCalledWith('preferences_set', { theme: 'dark' })
+    expect(invoke).toHaveBeenCalledWith('preferences_set', { partial: { theme: 'dark' } })
     expect(cb).toHaveBeenCalledWith(expect.objectContaining({ __local: true }), { theme: 'dark' })
   })
 
@@ -818,14 +829,15 @@ describe('SEND_CHANNEL_EMIT_MAP — window & preferences & updater', () => {
     ipcRenderer.send('mt::cmd-toggle-autosave')
     await vi.waitFor(() => expect(cb).toHaveBeenCalled())
     expect(invoke).toHaveBeenCalledWith('preferences_get_all')
-    expect(invoke).toHaveBeenCalledWith('preferences_set', { autoSave: true })
+    expect(invoke).toHaveBeenCalledWith('preferences_set', { partial: { autoSave: true } })
     expect(cb).toHaveBeenCalledWith(expect.objectContaining({ __local: true }), { autoSave: true })
   })
 
-  it('send("mt::open-setting-window") → invoke("window_open_settings")', async () => {
-    vi.mocked(invoke).mockResolvedValue(undefined)
+  it('send("mt::open-setting-window") → localEmit("mt::sidebar-show-settings")', async () => {
+    const cb = vi.fn()
+    ipcRenderer.on('mt::sidebar-show-settings', cb)
     ipcRenderer.send('mt::open-setting-window')
-    await vi.waitFor(() => expect(invoke).toHaveBeenCalledWith('window_open_settings'))
+    await vi.waitFor(() => expect(cb).toHaveBeenCalled())
   })
 
   it('send("mt::window-toggle-always-on-top") → invoke("window_toggle_always_on_top", { label })', async () => {
@@ -843,7 +855,7 @@ describe('SEND_CHANNEL_EMIT_MAP — window & preferences & updater', () => {
 
     ipcRenderer.send('mt::check-for-update')
     await vi.waitFor(() => expect(cb).toHaveBeenCalled())
-    expect(invoke).toHaveBeenCalledWith('updater_check_latest')
+    expect(invoke).toHaveBeenCalledWith('updater_check_latest', { owner: 'marktext', repo: 'marktext', currentVersion: '0.0.1' })
     expect(cb).toHaveBeenCalledWith(expect.objectContaining({ __local: true }), { has_update: true, version: '2.0' })
   })
 
@@ -888,14 +900,15 @@ describe('SEND_CHANNEL_EMIT_MAP — window & preferences & updater', () => {
     expect(cb).toHaveBeenCalledWith(expect.objectContaining({ __local: true }), 'en')
   })
 
-  it('send("mt::open-file", path) → fs_read_file + localEmit("mt::open-new-tab")', async () => {
-    vi.mocked(invoke).mockResolvedValue('# content')
+  it('send("mt::open-file", path) → fs_read_markdown + localEmit("mt::open-new-tab") + recent_add', async () => {
+    vi.mocked(invoke).mockResolvedValue({ markdown: '# content', filename: 'file.md', pathname: '/path/to/file.md', isMixedLineEndings: false })
     const cb = vi.fn()
     ipcRenderer.on('mt::open-new-tab', cb)
 
     ipcRenderer.send('mt::open-file', '/path/to/file.md')
     await vi.waitFor(() => expect(cb).toHaveBeenCalled())
-    expect(invoke).toHaveBeenCalledWith('fs_read_file', { path: '/path/to/file.md', encoding: 'utf-8' })
+    expect(invoke).toHaveBeenCalledWith('fs_read_markdown', { path: '/path/to/file.md' })
+    expect(invoke).toHaveBeenCalledWith('recent_add', { filePath: '/path/to/file.md' })
     expect(cb).toHaveBeenCalledWith(
       expect.objectContaining({ __local: true }),
       expect.objectContaining({ markdown: '# content', pathname: '/path/to/file.md', isMixedLineEndings: false }),
@@ -904,21 +917,21 @@ describe('SEND_CHANNEL_EMIT_MAP — window & preferences & updater', () => {
     )
   })
 
-  it('send("mt::open-file") 路径为空时不调用 fs_read_file', async () => {
+  it('send("mt::open-file") 路径为空时不调用 fs_read_markdown', async () => {
     ipcRenderer.send('mt::open-file', '')
     await flushMicrotasks()
     expect(invoke).not.toHaveBeenCalled()
   })
 
-  it('send("mt::window::drop", [...md files]) 循环 fs_read_file 每个 .md', async () => {
-    vi.mocked(invoke).mockResolvedValue('# md')
+  it('send("mt::window::drop", [...md files]) 循环 fs_read_markdown 每个 .md', async () => {
+    vi.mocked(invoke).mockResolvedValue({ markdown: '# md', filename: 'x.md', pathname: '', isMixedLineEndings: false })
     const cb = vi.fn()
     ipcRenderer.on('mt::open-new-tab', cb)
 
     ipcRenderer.send('mt::window::drop', ['/a.md', '/b.txt', '/c.md'])
     await vi.waitFor(() => expect(cb).toHaveBeenCalledTimes(2))
-    expect(invoke).toHaveBeenCalledWith('fs_read_file', expect.objectContaining({ path: '/a.md', encoding: 'utf-8' }))
-    expect(invoke).toHaveBeenCalledWith('fs_read_file', expect.objectContaining({ path: '/c.md', encoding: 'utf-8' }))
+    expect(invoke).toHaveBeenCalledWith('fs_read_markdown', { path: '/a.md' })
+    expect(invoke).toHaveBeenCalledWith('fs_read_markdown', { path: '/c.md' })
   })
 
   it('send("mt::app-try-quit") → invoke("window_close", { label })', async () => {
@@ -983,14 +996,15 @@ describe('SEND_CHANNEL_EMIT_MAP — window & preferences & updater', () => {
 })
 
 // ============================================================================
-// NOOP_CHANNELS — invoke("update-buffer-state") 直接返回 null
+// INVOKE_BUFFER_MAP — update-buffer-state → buffer_save（标签页缓冲区持久化）
 // ============================================================================
-describe('NOOP_CHANNELS', () => {
-  it('invoke("update-buffer-state") 返回 null 且不触发未映射告警', async () => {
+describe('INVOKE_BUFFER_MAP', () => {
+  it('invoke("update-buffer-state", state) → invoke("buffer_save", { state }) 且透传结果', async () => {
+    vi.mocked(invoke).mockResolvedValue({ ok: true })
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const r = await ipcRenderer.invoke('update-buffer-state', { foo: 1 })
-    expect(r).toBeNull()
-    expect(invoke).not.toHaveBeenCalled()
+    expect(r).toEqual({ ok: true })
+    expect(invoke).toHaveBeenCalledWith('buffer_save', { state: { foo: 1 } })
     expect(warnSpy).not.toHaveBeenCalled()
     warnSpy.mockRestore()
   })

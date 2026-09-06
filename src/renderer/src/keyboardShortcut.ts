@@ -37,6 +37,10 @@ const ACCELERATOR_TO_MENU_ID: Record<string, string> = {
   'Ctrl+F': 'edit.find',
   'F3': 'edit.find-next',
   'Shift+F3': 'edit.find-previous',
+  // Replace: Ctrl+H (VS Code / Notepad++ convention) + Ctrl+R kept as a
+  // MarkText-compatible alias. Ctrl+H previously toggled bullet-list, which
+  // made the replace window impossible to open by habit.
+  'Ctrl+H': 'edit.replace',
   'Ctrl+R': 'edit.replace',
   'Ctrl+Shift+F': 'edit.find-in-folder',
   'Ctrl+Z': 'edit.undo',
@@ -56,7 +60,6 @@ const ACCELERATOR_TO_MENU_ID: Record<string, string> = {
   'Ctrl+Alt+N': 'paragraph.math-formula',
   'Ctrl+Alt+H': 'paragraph.html-block',
   'Ctrl+G': 'paragraph.order-list',
-  'Ctrl+H': 'paragraph.bullet-list',
   'Ctrl+Alt+X': 'paragraph.task-list',
   'Ctrl+Alt+L': 'paragraph.loose-list-item',
   'Ctrl+Shift+0': 'paragraph.paragraph',
@@ -216,8 +219,11 @@ const ALWAYS_FIRE = new Set([
 ])
 
 const onKeyDown = (event: KeyboardEvent): void => {
-  // Skip IME composition (Chinese/Japanese/Korean input)
-  if (isCompositionEvent(event)) return
+  // Skip IME composition (Chinese/Japanese/Korean input) — but only for plain
+  // keys. Modifier combos (Ctrl+F / Ctrl+S …) are never composition text, and
+  // Chinese IMEs mark their keydown 229/isComposing, which used to swallow
+  // shortcuts pressed mid-composition ("Ctrl+F sometimes does nothing").
+  if (isCompositionEvent(event) && !event.ctrlKey && !event.metaKey && !event.altKey) return
 
   const accelerator = toAccelerator(event)
   if (!accelerator) return

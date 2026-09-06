@@ -36,6 +36,8 @@ export class MarkdownToHtml {
         const codes = this._exportContainer!.querySelectorAll(
             'code.language-mermaid',
         );
+        if (codes.length === 0)
+            return; // 无 mermaid 图时不加载渲染器（动态 import 开销可观）
         for (const code of codes) {
             const preEle = code.parentNode;
             if (!isHTMLElement(preEle))

@@ -23,6 +23,12 @@ vi.mock('../../src/renderer/src/tauri-bridge', () => ({
   localEmit: (...args: unknown[]) => localEmitMock(...args),
 }))
 
+// help.about 分支调用 getVersion()（@tauri-apps/api/app）并在成功/失败回调里 alert()。
+// 不 mock 时真实 getVersion 会 reject，alert 又未定义 → unhandled rejection。
+vi.mock('@tauri-apps/api/app', () => ({
+  getVersion: vi.fn(() => Promise.resolve('1.1.5')),
+}))
+
 // 静态 import：commands 与 menuBridge 共享同一份模块缓存，commands 的真实数据
 // 即 menuBridge 内部 findCommand() 所查询的数据。
 import commands from '../../src/renderer/src/commands'
@@ -34,6 +40,8 @@ const openExternalMock = vi.fn()
 const invokeMock = vi.fn()
 
 beforeAll(async () => {
+  // help.about 弹窗用 alert（happy-dom 未实现）→ 提供桩避免 unhandled rejection
+  vi.stubGlobal('alert', vi.fn())
   // 在 menuBridge 加载前注入 ipcRenderer + shell；on() 返回 unsubscribe 函数。
   ;(window as any).electron = {
     ipcRenderer: {
@@ -231,21 +239,23 @@ describe('menuBridge — FORMAT_MENU_MAP', () => {
 
 // ============================================================================
 // LAYOUT_MENU_MAP — layout 切换
+// （实现已从 localEmit("mt::set-view-layout") 改为 bus.emit("view:toggle-layout-entry")，
+//   监听者在 store/layout.ts:174；这里跟随实现断言 bus 事件。）
 // ============================================================================
 describe('menuBridge — LAYOUT_MENU_MAP', () => {
-  it('sideBarMenuItem → localEmit("mt::set-view-layout", { showSideBar: "toggle" })', () => {
+  it('sideBarMenuItem → bus.emit("view:toggle-layout-entry", "showSideBar")', () => {
     menuClickHandler!({}, { id: 'sideBarMenuItem' })
-    expect(localEmitMock).toHaveBeenCalledWith('mt::set-view-layout', { showSideBar: 'toggle' })
+    expect(bus.emit).toHaveBeenCalledWith('view:toggle-layout-entry', 'showSideBar')
   })
 
-  it('tabBarMenuItem → localEmit(..., { showTabBar: "toggle" })', () => {
+  it('tabBarMenuItem → bus.emit(..., "showTabBar")', () => {
     menuClickHandler!({}, { id: 'tabBarMenuItem' })
-    expect(localEmitMock).toHaveBeenCalledWith('mt::set-view-layout', { showTabBar: 'toggle' })
+    expect(bus.emit).toHaveBeenCalledWith('view:toggle-layout-entry', 'showTabBar')
   })
 
-  it('tocMenuItem → localEmit(..., { rightColumn: "toggle" })', () => {
+  it('tocMenuItem → bus.emit(..., "rightColumn")', () => {
     menuClickHandler!({}, { id: 'tocMenuItem' })
-    expect(localEmitMock).toHaveBeenCalledWith('mt::set-view-layout', { rightColumn: 'toggle' })
+    expect(bus.emit).toHaveBeenCalledWith('view:toggle-layout-entry', 'rightColumn')
   })
 })
 
@@ -284,11 +294,11 @@ describe('menuBridge — HELP_MENU_MAP', () => {
 // 特殊 view 菜单：command-palette / reload-images
 // ============================================================================
 describe('menuBridge — view special menus', () => {
-  it('view.command-palette → bus.emit("command-palette:open")', () => {
+  it('view.command-palette → bus.emit("show-command-palette")', () => {
     const busEmit = (bus.emit as ReturnType<typeof vi.fn>)
     busEmit.mockClear()
     menuClickHandler!({}, { id: 'view.command-palette' })
-    expect(busEmit).toHaveBeenCalledWith('command-palette:open')
+    expect(busEmit).toHaveBeenCalledWith('show-command-palette')
   })
 
   it('view.reload-images → window.location.reload()', () => {

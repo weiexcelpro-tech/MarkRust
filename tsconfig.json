@@ -19,10 +19,18 @@
     "jsx": "preserve",
     "jsxImportSource": "vue",
 
-    /* 路径别名 */
+    /* 路径别名（必须与 vite.config.ts alias 一致，此前 @/* 指错目录导致 112 个 TS2307） */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/renderer/src/*"],
+      "@shared/*": ["./src/shared/*"],
+      "common/*": ["./src/common/*"],
+      "@muyajs/core": ["./packages/muya/src/index.ts"],
+      "electron-log": ["./src/renderer/src/shims/electron-log.ts"],
+      "electron-log/renderer": ["./src/renderer/src/shims/electron-log.ts"],
+      "electron-updater": ["./src/renderer/src/shims/electron-updater.ts"],
+      "electron": ["./src/renderer/src/shims/electron.ts"],
+      "path": ["./node_modules/pathe/dist/index.d.ts"]
     },
 
     /* 类型 roots */

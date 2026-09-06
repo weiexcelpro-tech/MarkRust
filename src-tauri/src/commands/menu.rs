@@ -325,7 +325,7 @@ fn build_edit_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::men
             t("menu.edit.findPrevious", locale),
             "Shift+F3",
         )?)
-        .item(&text_item(app, "edit.replace", t("menu.edit.replace", locale), "Ctrl+R")?)
+        .item(&text_item(app, "edit.replace", t("menu.edit.replace", locale), "Ctrl+H")?)
         .separator()
         .item(&text_item(
             app,
@@ -483,7 +483,7 @@ fn build_paragraph_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri
         )?)
         .separator()
         .item(&text_item(app, "paragraph.order-list", t("menu.paragraph.orderedList", locale), "Ctrl+G")?)
-        .item(&text_item(app, "paragraph.bullet-list", t("menu.paragraph.bulletList", locale), "Ctrl+H")?)
+        .item(&text_item(app, "paragraph.bullet-list", t("menu.paragraph.bulletList", locale), "")?)
         .item(&text_item(app, "paragraph.task-list", t("menu.paragraph.taskList", locale), "Ctrl+Alt+X")?)
         .item(&text_item(
             app,

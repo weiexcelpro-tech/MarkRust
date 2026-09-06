@@ -97,7 +97,9 @@ export const handleMenuClick = (id: string): void => {
   }
 
   if (id === 'view.command-palette') {
-    bus.emit('command-palette:open')
+    // commandPalette 组件监听的是 'show-command-palette'；旧事件名
+    // 'command-palette:open' 无任何监听者，导致菜单/Ctrl+Shift+P 打不开面板
+    bus.emit('show-command-palette')
     return
   }
 

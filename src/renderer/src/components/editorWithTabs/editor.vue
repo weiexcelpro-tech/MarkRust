@@ -1337,31 +1337,73 @@ const scrollElementIntoView = (anchor: Element | null | undefined, duration = 30
   animatedScrollTo(container, container.scrollTop + y - STANDAR_Y, duration)
 }
 
+// ── TOC 跳转：顶对齐（与源码模式一致）──
+// 此前 TOC 复用 scrollElementIntoView：章节名落在视口顶下 320px（上游"屏幕中部"
+// 设计），且落点受图片异步加载影响忽上忽下。改为顶对齐 + 落点校准。
+
+/** 章节名与编辑区顶边的呼吸空隙（px）。 */
+const HEADER_TOP_PAD = 16
+
+/** 把章节名吸回顶对齐位置（校准动画期间/图片加载后的布局漂移）。 */
+const snapHeaderToTop = (container: HTMLElement, headingEl: Element) => {
+  if (!container.isConnected || !headingEl.isConnected) return
+  const drift =
+    headingEl.getBoundingClientRect().top - container.getBoundingClientRect().top - HEADER_TOP_PAD
+  if (Math.abs(drift) > 1) {
+    const max = container.scrollHeight - container.clientHeight
+    container.scrollTop = Math.max(0, Math.min(container.scrollTop + drift, max))
+  }
+}
+
+const scrollHeaderToTop = (headingEl: Element) => {
+  const container = getScrollContainer() as HTMLElement | null
+  if (!container || !headingEl) return
+  // 懒渲染块先全部补齐再测量：未渲染块高度为 0，会把目标位置越测越偏
+  flushAllBlocksToElement(container, headingEl)
+  // 用容器相对坐标换算内容坐标，落点与当前滚动位置、进行中的动画无关
+  const offsetInContainer =
+    headingEl.getBoundingClientRect().top - container.getBoundingClientRect().top
+  const max = container.scrollHeight - container.clientHeight
+  const target = Math.max(0, Math.min(container.scrollTop + offsetInContainer - HEADER_TOP_PAD, max))
+  animatedScrollTo(container, target, 300, () => {
+    // 动画结束后立即校准一次
+    snapHeaderToTop(container, headingEl)
+    // 目标题上方的图片加载完成会把布局撑动——宽限期内持续吸回顶对齐，
+    // 消除"有时靠上有时靠下"的漂移
+    const pendingImgs = Array.from(container.querySelectorAll('img')).filter(
+      (img) =>
+        !img.complete &&
+        img.compareDocumentPosition(headingEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    if (pendingImgs.length === 0) return
+    const deadline = Date.now() + 2500
+    const iv = setInterval(() => {
+      snapHeaderToTop(container, headingEl)
+      const allLoaded = pendingImgs.every((img) => img.complete)
+      if (allLoaded || Date.now() > deadline || !container.isConnected) {
+        clearInterval(iv)
+        snapHeaderToTop(container, headingEl)
+      }
+    }, 250)
+  })
+}
+
 const scrollToHighlight = () => {
   return scrollToElement('.mu-highlight')
 }
 
 /**
- * Scrolls the editor to the heading for a TOC entry. See
- * `resolveTocHeadingElement` for why the slug is resolved by document order
- * against the top-level headings only.
+ * Scrolls the editor to the heading for a TOC entry, top-aligned like source
+ * mode. See `resolveTocHeadingElement` for why the slug is resolved by
+ * document order against the top-level headings only.
  * @param slug The TOC entry's slug from the `scroll-to-header` bus event.
  */
 const scrollToHeader = (slug: unknown) => {
   const container = getScrollContainer()
   if (!container) return
   const headingEl = resolveTocHeadingElement(container, editorStore.listToc, slug)
-  if (headingEl) {
-    // Flush ALL blocks between the current viewport and the target heading.
-    // When lazyInlineRender is on, blocks outside the viewport are not patched.
-    // A distant heading's getBoundingClientRect is wrong if intervening blocks
-    // are still unpatched (their heights are 0/skeleton), which shifts every
-    // later element's position. Flushing the target block alone is insufficient
-    // because the cumulative height error of all unpatched blocks above it
-    // can be hundreds of pixels.
-    flushAllBlocksToElement(container, headingEl)
-  }
-  scrollElementIntoView(headingEl)
+  if (!headingEl) return
+  scrollHeaderToTop(headingEl)
 }
 
 // Scrolls to a non-heading in-document anchor target (e.g. a custom

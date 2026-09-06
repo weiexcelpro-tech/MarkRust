@@ -142,6 +142,8 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
   },
   'mt::cmd-new-editor-window': () => invoke('window_new_editor'),
   'mt::cmd-close-window': () => invoke('window_close', { label: currentLabel() }),
+  // 编辑器 store 的 mt::ask-for-close 链路在"无未保存内容"时的最终关闭通道
+  'mt::close-window': () => invoke('window_close', { label: currentLabel() }),
   'mt::cmd-toggle-autosave': async () => {
     const prefs = await invoke<Record<string, unknown>>('preferences_get_all')
     const current = !prefs.autoSave
@@ -438,7 +440,6 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
     localEmit('mt::user-preference', prefs)
   },
   'mt::ask-for-user-data': () => {},
-  'mt::close-window': () => invoke('window_close', { label: currentLabel() }),
   'mt::view-layout-changed': (args) => {
     // args: [windowId, { showSideBar?, showTabBar?, sourceCode?, typewriter?, focus? }]
     const changes = args[1] as Record<string, unknown> | undefined
@@ -692,12 +693,17 @@ const toBytes = (data: unknown): number[] | string => {
   return data as string
 }
 
-// 当前窗口 label（Rust window commands 需要）；从 URL ?wid= 取或默认 main
+// 当前窗口 label（Rust window commands 需要）。
+// 此前实现按 URL ?type= 区分、缺省一律返回 'main'——所有编辑器副窗口
+// （label editor-xxxx）的关闭/置顶/标题命令都会错打到主窗口上。
+// 必须在调用时实时读 metadata：模块顶层执行时 __TAURI_INTERNALS__ 可能尚未
+// 注入（WebView2 初始化时序），届时回落 'main' 会导致副窗口关闭错杀主窗口
+// （真实复现：新建窗口点 X 整个应用退出）。
 const currentLabel = (): string => {
-  const params = new URLSearchParams(globalThis.location?.search || '')
-  const type = params.get('type')
-  if (type === 'settings') return 'settings'
-  return 'main'
+  const meta = (globalThis as Record<string, any>).__TAURI_INTERNALS__?.metadata
+  const label = meta?.currentWindow?.label
+  if (typeof label === 'string' && label) return label
+  return winLabel || 'main'
 }
 
 const noop = (): void => {}
@@ -869,18 +875,24 @@ const clipboard = {
 const webFrame = {
   setZoomFactor: (factor: number) => {
     if (typeof factor === 'number' && factor > 0) {
-      import('@tauri-apps/api/webview').then(({ getCurrentWebview }) => {
-        getCurrentWebview().setZoom(factor).catch((e: unknown) => console.warn('[tauri-bridge] setZoom failed:', e))
-      })
+      // 链级 catch：getCurrentWebview() 在缺少 Tauri internals 的环境会同步抛错，
+      // .then 回调内的同步异常不会进入内层 setZoom().catch
+      import('@tauri-apps/api/webview')
+        .then(({ getCurrentWebview }) => {
+          getCurrentWebview().setZoom(factor).catch((e: unknown) => console.warn('[tauri-bridge] setZoom failed:', e))
+        })
+        .catch((e: unknown) => console.warn('[tauri-bridge] setZoomFactor failed:', e))
     }
   },
   setZoomLevel: (level: number) => {
     // Tauri setZoom 用 factor (1.0=100%)，Electron webFrame.setZoomLevel 用 level (0=100%, ±0.2 per step)
     const factor = 1 + level * 0.2
     if (factor > 0) {
-      import('@tauri-apps/api/webview').then(({ getCurrentWebview }) => {
-        getCurrentWebview().setZoom(factor).catch((e: unknown) => console.warn('[tauri-bridge] setZoom failed:', e))
-      })
+      import('@tauri-apps/api/webview')
+        .then(({ getCurrentWebview }) => {
+          getCurrentWebview().setZoom(factor).catch((e: unknown) => console.warn('[tauri-bridge] setZoom failed:', e))
+        })
+        .catch((e: unknown) => console.warn('[tauri-bridge] setZoomLevel failed:', e))
     }
   },
   getZoomFactor: () => 1,
@@ -1126,6 +1138,23 @@ setTimeout(runOnce, 3000) // safety fallback
 
 export { electron, fileUtils, processShim as process, rgPath, commandExists, i18nUtils, ripgrep, uploader, fonts, path }
 
+// 原生 X / close() 触发的 CloseRequested 被 Rust 拦截后转来本事件：
+// settings 窗口无未保存概念，直接批准关闭；编辑器窗口转交编辑器 store 的
+// mt::ask-for-close 链路（未保存 → close-window-confirm 对话框；干净 → close-window）。
+listen('mt::close-requested', (event) => {
+  // Rust 侧 window.emit 是全应用广播：所有窗口的监听器都会收到，必须按
+  // payload 里的目标 label 过滤，否则一个窗口关闭会让所有窗口各自走一遍
+  // 确认链、全部批准关闭（真实复现：副窗口点 X 整个应用退出）。
+  const targetLabel = event.payload as string
+  if (targetLabel !== currentLabel()) return
+  if (targetLabel === 'settings') {
+    invoke('window_close', { label: 'settings' }).catch((e) =>
+      console.warn('[tauri-bridge] settings close failed', e))
+    return
+  }
+  localEmit('mt::ask-for-close')
+}).catch((e) => console.warn('[tauri-bridge] close-requested listen failed', e))
+
 // Single-instance: when a second instance launches with a file argument, the
 // Rust single-instance plugin emits this event so the running instance opens it.
 listen('mt::open-file-from-second-instance', (event) => {
@@ -1172,11 +1201,10 @@ listen<string>('mt::open-recent-file', (event) => {
 
 // P0 fix: Initialize global keyboard shortcut handler.
 // Tauri 2 native menu accelerators don't intercept WebView key events;
-// this bridge captures keydown events and dispatches to handleMenuClick().
-// Only initialize for the editor window (not settings).
-if (!isSettings) {
-  import('./keyboardShortcuts').then(({ initKeyboardShortcuts }) => {
-    initKeyboardShortcuts()
-    console.log('[tauri-bridge] keyboard shortcuts initialized')
-  }).catch((e) => console.warn('[tauri-bridge] keyboardShortcuts import failed:', e))
-}
+// keyboardShortcut.ts (registered from main.ts) captures keydown events and
+// dispatches to handleMenuClick().
+// NOTE: the legacy keyboardShortcuts.ts (System A) handler that used to be
+// registered here was REMOVED — it double-dispatched every shortcut alongside
+// the System B handler on the same document capture phase (e.g. Ctrl+T opened
+// two tabs, Ctrl+H toggled bullet-list on and off). keyboardShortcut.ts
+// contains the merged, complete mapping.

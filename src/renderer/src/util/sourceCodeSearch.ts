@@ -8,8 +8,9 @@
 //   - Navigate to prev/next match
 //   - Replace current or all matches
 
+import { scrollSourceContainerToLine } from './sourceModeToc'
+
 type CMInstance = any // CodeMirror 5 instance (loosely typed)
-type CMPosition = { line: number; ch: number }
 
 export interface SearchOptions {
   isCaseSensitive?: boolean
@@ -135,9 +136,9 @@ export function cmApplySearchHighlights(
     cm.setCursor(from, null, { scroll: false })
 
     if (scrollContainer) {
-      // Same calculation as scrollSourceEditorToLine: include CodeMirror margin-top
-      const top = cm.heightAtLine(from.line, 'local') + 50
-      scrollContainer.scrollTo({ top, behavior: 'smooth' })
+      // Same landing rules as the TOC jump in sourceModeToc: measured content
+      // offset + post-landing drift correction (no hard-coded margin).
+      scrollSourceContainerToLine(cm, from.line, scrollContainer)
     }
   }
 }

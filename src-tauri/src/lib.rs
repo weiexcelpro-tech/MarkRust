@@ -3,7 +3,7 @@ mod error;
 mod window_state;
 
 use std::sync::Mutex;
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, UserAttentionType};
 
 struct LaunchFile(Mutex<Option<String>>);
 
@@ -36,8 +36,18 @@ pub fn run() {
             // is to briefly toggle always-on-top, then restore focus.
             if let Some(main_window) = app.get_webview_window("main") {
                 let _ = main_window.show();
+                // A minimized window is still "visible", so show() alone is a
+                // no-op and the topmost toggle cannot restore it either.
+                let _ = main_window.unminimize();
                 let _ = main_window.set_always_on_top(true);
                 let _ = main_window.set_focus();
+                // Taskbar attention flash (parity with original MarkText, whose
+                // background window got the Windows taskbar-blink cue when
+                // foreground transfer was denied). tao skips the flash when the
+                // window is already active, so this only fires when set_focus
+                // above was rejected.
+                let _ = main_window
+                    .request_user_attention(Some(UserAttentionType::Informational));
                 // Restore always-on-top after a brief delay so the window actually
                 // comes to foreground first.
                 let win = main_window.clone();
@@ -60,6 +70,7 @@ pub fn run() {
             commands::menu::setup_menu_events(app.handle());
             window_state::restore(app.handle());
             window_state::setup_save(app.handle());
+
             let launch_file = std::env::args()
                 .nth(1)
                 .filter(|p| std::path::Path::new(p).is_file())
@@ -171,6 +182,23 @@ pub fn run() {
             commands::menu::menu_set_enabled,
             commands::menu::menu_rebuild_locale,
         ])
+        // 拦截窗口关闭：未批准的关闭请求 prevent_close 并转交渲染层确认未保存
+        // 内容（编辑器 store 的 mt::ask-for-close 链路）。渲染层确认后走
+        // window_close（标记 close_approved）放行。settings 窗口在渲染层直接批准。
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let label = window.label().to_string();
+                let approved = commands::window::close_approved()
+                    .lock()
+                    .unwrap()
+                    .remove(&label);
+                if approved {
+                    return; // 渲染层已确认关闭，放行
+                }
+                api.prevent_close();
+                let _ = window.emit("mt::close-requested", label);
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
