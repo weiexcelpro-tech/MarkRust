@@ -254,9 +254,13 @@ class InlineRenderer {
         const isCollapsed = targetAnchorOffset === targetFocusOffset;
 
         // === K V5: apply-immediate（patch 后立即同步设 sel 到 desired）===
+        // 仅当该块当前持有文档选区时才回写：无光标 patch（懒渲染、搜索高亮、滚动）
+        // 若在选区不在块内时回写，会把文档选区硬切进这个块——用户正focus在搜索框
+        // 输入时，焦点被夺走、无法继续输入（IO 补渲染在滚动后批量触发，必现）。
+        const selOwnsBlock = !!(sel && sel.anchorNode && domNode!.contains(sel.anchorNode));
         const foundFocus = k5FindTextNodeAtOffset(domNode!, targetFocusOffset);
         const foundAnchor = isCollapsed ? foundFocus : k5FindTextNodeAtOffset(domNode!, targetAnchorOffset);
-        if (foundFocus && foundAnchor && sel) {
+        if (foundFocus && foundAnchor && sel && selOwnsBlock) {
             try {
                 if (isCollapsed)
                     sel.collapse(foundFocus.textNode, foundFocus.localOffset);

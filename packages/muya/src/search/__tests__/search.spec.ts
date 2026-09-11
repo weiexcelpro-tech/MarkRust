@@ -34,10 +34,13 @@ afterEach(() => {
         delete (window as Partial<Window>).MUYA_VERSION;
 });
 
-function bootMuya(markdown: string): Muya {
+function bootMuya(markdown: string, opts: { lazyInlineRender?: boolean } = {}): Muya {
     const host = document.createElement('div');
     document.body.appendChild(host);
-    const muya = new Muya(host, { markdown } as ConstructorParameters<typeof Muya>[1]);
+    const muya = new Muya(host, {
+        markdown,
+        lazyInlineRender: opts.lazyInlineRender === true,
+    } as ConstructorParameters<typeof Muya>[1]);
     muya.init();
     bootedHosts.push(muya.domNode);
     return muya;
@@ -194,7 +197,7 @@ describe('search × lazyInlineRender — flush must not wipe the active highligh
         // moved to the match.
         const filler = Array.from({ length: 40 }, (_, i) => `para ${i} filler`.repeat(6)).join('\n\n')
         const md = `${filler}\n\nneedle far down\n`
-        const muya = bootMuya(md);
+        const muya = bootMuya(md, { lazyInlineRender: true });
         placeCursorOnFirstBlock(muya);
 
         const search = muya.editor.searchModule;

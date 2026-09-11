@@ -8,6 +8,7 @@ import base from './playwright.config'
 //    默认 30s 的 page.goto 上超时——用例本身并没有失败。
 export default defineConfig({
   ...base,
+  timeout: 120000,
   use: {
     ...base.use,
     navigationTimeout: 120000,
