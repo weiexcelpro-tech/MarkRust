@@ -1334,7 +1334,21 @@ const scrollElementIntoView = (anchor: Element | null | undefined, duration = 30
   // Ensure the block's inline content is rendered before measuring position.
   flushBlockForElement(anchor)
   const { y } = anchor.getBoundingClientRect()
-  animatedScrollTo(container, container.scrollTop + y - STANDAR_Y, duration)
+  animatedScrollTo(container, container.scrollTop + y - STANDAR_Y, duration, () => {
+    // 落位校准：动画期间/刚落位后布局仍可能变化（图片异步加载、迟到重排），
+    // 动画结束时实测锚点与设计位置的残差并瞬时校正。与 TOC 的 snapHeaderToTop
+    // 同一套模式。连续触发时 animatedScrollTo 的令牌会取代旧动画，旧校准失效。
+    const snap = () => {
+      if (!anchor.isConnected || !container.isConnected) return
+      const drift = anchor.getBoundingClientRect().top - container.getBoundingClientRect().top - STANDAR_Y
+      if (Math.abs(drift) > 1) {
+        const max = container.scrollHeight - container.clientHeight
+        container.scrollTop = Math.max(0, Math.min(container.scrollTop + drift, max))
+      }
+    }
+    snap()
+    window.setTimeout(snap, 450)
+  })
 }
 
 // ── TOC 跳转：顶对齐（与源码模式一致）──

@@ -182,3 +182,32 @@ describe('search.replace() — replace all across multiple blocks', () => {
         expect(search.matches.length).toBe(0);
     });
 });
+
+
+describe('search × lazyInlineRender — flush must not wipe the active highlight', () => {
+    it('flushLazyPatch on every match block keeps span.mu-highlight alive (#5535 regression)', () => {
+        // The editor flushes unpatched blocks above the current search hit
+        // before measuring the reveal scroll. Search patches out-of-viewport
+        // blocks directly, so it must also mark the lazy state — otherwise the
+        // flush re-rendered the active block bare and the `.mu-highlight` span
+        // vanished, the scroll measured a detached node, and the view never
+        // moved to the match.
+        const filler = Array.from({ length: 40 }, (_, i) => `para ${i} filler`.repeat(6)).join('\n\n')
+        const md = `${filler}\n\nneedle far down\n`
+        const muya = bootMuya(md);
+        placeCursorOnFirstBlock(muya);
+
+        const search = muya.editor.searchModule;
+        search.search('needle');
+        expect(search.matches.length).toBe(1);
+        expect(highlightCount(muya)).toBe(1);
+
+        // What editor.vue's flushAllBlocksToElement does to every block from
+        // the top down to (and including) the target.
+        for (const m of search.matches)
+            m.block.flushLazyPatch();
+
+        expect(highlightCount(muya)).toBe(1);
+        expect(muya.domNode.querySelector('span.mu-highlight')!.textContent).toBe('needle');
+    });
+});

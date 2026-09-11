@@ -53,7 +53,14 @@ export class Search {
         for (const [block, highlights] of matchesMap.entries()) {
             const isActive = highlights.some(h => h.active);
 
-            block.update(undefined, isClear ? [] : highlights);
+            // Must go through updateAndMarkLazyPatched (not bare update): search
+            // patches blocks that are far outside the viewport, whose lazy patch
+            // never ran. Bare update renders the highlights but leaves the lazy
+            // flag false, so the editor's subsequent flush of unpatched blocks
+            // re-rendered this block bare and wiped the active `mu-highlight`
+            // span — the reveal scroll then measured a detached node and the
+            // view never moved to the match.
+            block.updateAndMarkLazyPatched(undefined, isClear ? [] : highlights);
 
             if (block.parent?.active && !isActive)
                 block.blurHandler();

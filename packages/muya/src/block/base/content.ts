@@ -558,6 +558,10 @@ class Content extends TreeNode {
             this._scheduleLazyPatch();
         }
         else {
+            // Eager path (lazy render off, or IntersectionObserver unavailable):
+            // the inline content is rendered right now, so record it — otherwise
+            // a later flushLazyPatch() would pointlessly re-render the block.
+            this._lazyPatched = true;
             this.update();
         }
     }
@@ -619,6 +623,21 @@ class Content extends TreeNode {
         this._lazyObserver?.disconnect();
         this._lazyObserver = null;
         this.update();
+    }
+
+    /**
+     * Update inline content and record that the lazy patch has happened, so a
+     * later `flushLazyPatch()` is a no-op instead of re-rendering the block
+     * with a bare `update()` — which would wipe whatever this call just drew
+     * (the search module's `mu-highlight`/`mu-selection` spans live only in
+     * that render). Search patches out-of-viewport blocks directly through
+     * this path.
+     */
+    updateAndMarkLazyPatched(cursor?: IRenderCursor, highlights: IHighlight[] = []): void {
+        this._lazyPatched = true;
+        this._lazyObserver?.disconnect();
+        this._lazyObserver = null;
+        this.update(cursor, highlights);
     }
 
     /**
