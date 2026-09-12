@@ -27,6 +27,7 @@
             type="text"
             :placeholder="t('search.searchPlaceholder')"
             @keyup="handleEnterKey"
+            @paste="handleSearchPaste"
           >
           <div class="controls">
             <span class="search-result">{{ highlightIndex + 1 }} /
@@ -92,6 +93,7 @@
             v-model="replaceValue"
             type="text"
             :placeholder="t('search.replacementPlaceholder')"
+            @paste="handleReplacePaste"
           >
         </div>
         <div class="button-group">
@@ -307,6 +309,47 @@ const handleEnterKey = (event: KeyboardEvent) => {
   if (event.key === 'Enter') {
     find('next')
   }
+}
+
+// 在光标处插入文本（替换选中区），并补发 input 事件让 v-model 同步。
+const insertIntoInput = (input: HTMLInputElement, text: string) => {
+  const start = input.selectionStart ?? input.value.length
+  const end = input.selectionEnd ?? input.value.length
+  input.setRangeText(text, start, end, 'end')
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+/**
+ * 搜索框粘贴归一化。从文档里复制多段内容时剪贴板文本含换行，浏览器会把
+ * 换行折叠成空格塞进单行输入框，拼出的"长句"跨块搜索永远 0 命中（搜索按
+ * block.text 逐块子串匹配）。多行粘贴只取第一个非空行——它正好定位到复制
+ * 起点所在的块。
+ */
+const handleSearchPaste = (event: ClipboardEvent) => {
+  const text = event.clipboardData?.getData('text/plain') ?? ''
+  if (!text)
+    return
+  event.preventDefault()
+  const firstLine = text
+    .split(/\r\n?|\n/)
+    .map(line => line.trim())
+    .find(line => line.length > 0)
+  if (firstLine == null)
+    return
+  insertIntoInput(event.target as HTMLInputElement, firstLine)
+}
+
+// 替换框粘贴：保留全部内容，换行（含周围空白）折叠为单个空格，
+// 避免把 "  " 硬塞进文档正文。
+const handleReplacePaste = (event: ClipboardEvent) => {
+  const text = event.clipboardData?.getData('text/plain') ?? ''
+  if (!text)
+    return
+  event.preventDefault()
+  const normalized = text.replace(/\s*(?:\r\n?|\n)\s*/g, ' ').trim()
+  if (!normalized)
+    return
+  insertIntoInput(event.target as HTMLInputElement, normalized)
 }
 
 const searchFn = () => {
