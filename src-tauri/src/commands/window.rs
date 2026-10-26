@@ -61,6 +61,9 @@ pub async fn window_open_settings(app: tauri::AppHandle) -> AppResult<()> {
         .min_inner_size(600.0, 400.0)
         .resizable(true)
         .visible(true)
+        // B02 休眠风险消除：设置 WebView2 默认背景色为白色，首帧渲染完成前
+        // 不再露出 WebView2 默认黑底（消除「设置按钮黑窗」复发的黑闪机制）。
+        .background_color(tauri::window::Color(255, 255, 255, 255))
         .build()
         .map_err(|e| AppError::Other(format!("create settings window: {e}")))?;
     Ok(())

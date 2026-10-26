@@ -503,6 +503,43 @@ fn page_size_inches(size: &str) -> (f32, f32) {
     }
 }
 
+/// B10 修复（③）：为 document.xml 中每个表格的首行 trPr 注入 `<w:tblHeader/>`，
+/// 使 Word 跨页时自动重复表头。
+///
+/// docx-rs 0.4.22 未提供 table_header API（TableRowProperty 无 tblHeader 字段、
+/// XMLBuilder 无对应元素），无法在构建树上直接标记；此处对 `Docx::build()` 产出的
+/// `XMLDocx.document`（pub 字段，即 word/document.xml 字节）做 pack 前后处理。
+/// docx-rs 对每行恒输出空 `<w:trPr ...>`，且各 `<w:tbl>` 后的第一个 trPr 即首行属性。
+fn inject_table_header_flag(document_xml: &[u8]) -> Vec<u8> {
+    let xml = match std::str::from_utf8(document_xml) {
+        Ok(s) => s.to_string(),
+        Err(_) => return document_xml.to_vec(), // 非 UTF-8（不可能出现）时原样返回
+    };
+    let tbl_marker = "<w:tbl>";
+    let trpr_marker = "<w:trPr";
+    let mut result = String::with_capacity(xml.len() + 64);
+    let mut rest = xml.as_str();
+    while let Some(tbl_pos) = rest.find(tbl_marker) {
+        let after_tbl = &rest[tbl_pos + tbl_marker.len()..];
+        match after_tbl.find(trpr_marker) {
+            Some(trpr_rel) => {
+                let trpr_abs = tbl_pos + tbl_marker.len() + trpr_rel;
+                let gt_rel = match after_tbl[trpr_rel..].find('>') {
+                    Some(g) => g,
+                    None => break,
+                };
+                // 把该行的 trPr 开标签整体替换为「开标签 + tblHeader」
+                result.push_str(&rest[..trpr_abs]);
+                result.push_str("<w:trPr><w:tblHeader/>");
+                rest = &after_tbl[gt_rel + 1..];
+            }
+            None => break, // 表格无任何行（空表），后续内容原样保留
+        }
+    }
+    result.push_str(rest);
+    result.into_bytes()
+}
+
 /// 辅助：逐个 add_run 构建 Paragraph（docx-rs 只有 add_run，没有 add_runs）。
 /// 可选注入行高 line_spacing（None 时跳过，段落将继承样式定义或默认值）。
 fn paragraph_from_runs(
@@ -713,11 +750,15 @@ pub async fn markdown_to_docx(req: &ExportDocxRequest) -> AppResult<(Vec<u8>, u3
 
             // --- 行内代码 ---
             Event::Code(code_text) => {
-                current_runs.push(
-                    Run::new().add_text(code_text.to_string())
-                        .fonts(RunFonts::new().ascii("Consolas").east_asia("Consolas"))
-                        .size(20) // 10pt
-                );
+                let run = Run::new().add_text(code_text.to_string())
+                    .fonts(RunFonts::new().ascii("Consolas").east_asia("Consolas"))
+                    .size(20); // 10pt
+                // B10 修复（②）：表格内行内代码写入单元格缓冲（等宽 run），不再漏进段落缓冲
+                if in_table {
+                    current_cell_runs.push(run);
+                } else {
+                    current_runs.push(run);
+                }
             }
 
             // --- 代码块 ---
@@ -808,16 +849,35 @@ pub async fn markdown_to_docx(req: &ExportDocxRequest) -> AppResult<(Vec<u8>, u3
             // --- 链接 ---
             Event::Start(Tag::Link { dest_url: _, .. }) => {
                 // docx-rs 不直接支持超链接 Run，暂存为文本 + 蓝色
-                current_runs.push(Run::new().add_text("[").color("0563C1"));
+                let bracket = Run::new().add_text("[").color("0563C1");
+                // B10 修复（②）：表格内链接保留链接文本、丢弃超链接（括号写入单元格缓冲）
+                if in_table {
+                    current_cell_runs.push(bracket);
+                } else {
+                    current_runs.push(bracket);
+                }
             }
             Event::End(TagEnd::Link) => {
                 // 显示 URL
                 // 注意：dest_url 在 End 事件中不可直接获取，需在 Start 中暂存
-                current_runs.push(Run::new().add_text("]").color("0563C1"));
+                let bracket = Run::new().add_text("]").color("0563C1");
+                if in_table {
+                    current_cell_runs.push(bracket);
+                } else {
+                    current_runs.push(bracket);
+                }
             }
 
             // --- 图片 ---
             Event::Start(Tag::Image { dest_url, .. }) => {
+                // B10 修复（②）：表格内图片暂不内嵌（真图会以游离段落甩出表格外），
+                // alt 文本随 Text 事件留在单元格内。已知限制：单元格内图片当前降级为
+                // 纯 alt 文本，真图嵌入待后续支持（保证导出不崩溃、表结构完整）。
+                if in_table {
+                    i += 1; // 跳过本事件，End(Image) 为 no-op
+                    continue;
+                }
+
                 doc = flush_paragraph(doc, &mut current_runs, line_spacing_ref);
 
                 if req.image_embed {
@@ -910,9 +970,9 @@ pub async fn markdown_to_docx(req: &ExportDocxRequest) -> AppResult<(Vec<u8>, u3
                 current_cell_runs.clear();
             }
             Event::End(TagEnd::TableHead) => {
-                current_table_row.push(current_cell_runs.drain(..).collect());
-                // pulldown-cmark 0.12: TableHead 不触发 TableRow 事件，
-                // 必须在此处将 header 行推入 table_rows，否则 header 行丢失
+                // B10 修复（①）：pulldown-cmark 0.12.2 的 TableHead 内部已发出 TableCell 事件，
+                // End(TableCell) 们已把表头单元格收进 current_table_row；此处再 push 必为空
+                // cell，导致表头行恒多 1 个空列（7edd0d3 引入的冗余）。仅保留 header 行推入。
                 table_rows.push(current_table_row.drain(..).collect());
             }
             Event::Start(Tag::TableRow) => {
@@ -948,9 +1008,32 @@ pub async fn markdown_to_docx(req: &ExportDocxRequest) -> AppResult<(Vec<u8>, u3
             // --- Footnote ---
             Event::Start(Tag::FootnoteDefinition(_label)) => {}
             Event::End(TagEnd::FootnoteDefinition) => {}
+            // B10 修复（②）：脚注引用以 `[^label]` 字面文本保留（表格内写入单元格缓冲）
+            Event::FootnoteReference(label) => {
+                let run = Run::new().add_text(format!("[^{}]", label));
+                if in_table {
+                    current_cell_runs.push(run);
+                } else {
+                    current_runs.push(run);
+                }
+            }
 
             // --- HTML（忽略 Front-matter 等） ---
             Event::Html(_html) => {}
+
+            // B10 修复（②）：内联 HTML 中仅识别 <br> 换行（写入 `<w:br/>` 真换行，
+            // 表格内/段落内均生效）；其余内联 HTML 维持忽略，与 Event::Html 一致
+            Event::InlineHtml(html) => {
+                let tag = html.trim().to_ascii_lowercase();
+                if tag == "<br>" || tag == "<br/>" || tag == "<br />" {
+                    let br_run = Run::new().add_break(docx_rs::BreakType::TextWrapping);
+                    if in_table {
+                        current_cell_runs.push(br_run);
+                    } else {
+                        current_runs.push(br_run);
+                    }
+                }
+            }
 
             // --- 忽略未知事件 ---
             _ => {}
@@ -965,9 +1048,12 @@ pub async fn markdown_to_docx(req: &ExportDocxRequest) -> AppResult<(Vec<u8>, u3
         doc = doc.add_paragraph(paragraph_from_runs(drained, line_spacing_ref));
     }
 
-    // 5. 生成 DOCX 字节流（build → XMLDocx，再 pack → bytes）
+    // 5. 生成 DOCX 字节流（build → XMLDocx → 注入 tblHeader → pack → bytes）
     let mut buf = Cursor::new(Vec::<u8>::new());
-    doc.build()
+    let mut xml_docx = doc.build();
+    // B10 修复（③）：pack 前为每个表格首行注入 <w:tblHeader/>（见 inject_table_header_flag）
+    xml_docx.document = inject_table_header_flag(&xml_docx.document);
+    xml_docx
         .pack(&mut buf)
         .map_err(|e| AppError::Other(format!("DOCX 生成失败: {}", e)))?;
 

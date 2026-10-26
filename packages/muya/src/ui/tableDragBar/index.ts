@@ -245,7 +245,10 @@ export class TableDragBar extends BaseFloat {
         if (this._mouseTimer) {
             clearTimeout(this._mouseTimer);
             this._mouseTimer = null;
-            if (barType === 'right') {
+            // B07-1 修复：bottom 拖拽条（列操作入口）此前不 emit
+            // 'muya-table-bar'，toolList.bottom 的插入/删除列菜单永远打不开。
+            // 现在 bottom/right 两种 barType 都弹出对应菜单（列/行操作）。
+            if (barType) {
                 eventCenter.emit('muya-table-bar', {
                     reference: {
                         getBoundingClientRect: () => container!.getBoundingClientRect(),

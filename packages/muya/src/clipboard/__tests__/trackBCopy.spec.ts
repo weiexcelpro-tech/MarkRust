@@ -7,9 +7,9 @@ import { CopyType } from '../types';
 
 // Track B — Copy (clipboard chain step 1). Ports `packages/muyajs`
 // `copyCutCtrl.copyHandler` behaviour into `@muyajs/core`:
-//   1. `normal` copy writes ONLY text/plain (markdown source); text/html is
-//      blanked so an internal copy → paste round-trips through the markdown
-//      branch losslessly and external pastes land as markdown source.
+//   1. `normal` copy writes the rendered HTML to text/html (B03: rich-text
+//      targets like Word keep formatting) and keeps the markdown source in
+//      text/plain, with the empty-guard keyed on `text`.
 //   2. `copyAsHtml` writes the DOMPurify-sanitized rendered HTML into
 //      text/plain and blanks text/html, with the empty-guard keyed on `text`.
 //   3. A selected inline image copies its raw `![alt](src)` markdown.
@@ -57,14 +57,16 @@ function clipboardWithData(html: string, text: string, muya: Muya = fakeMuya()) 
     return clipboard;
 }
 
-describe('track B — normal copy writes only text/plain', () => {
-    it('blanks text/html and writes markdown source to text/plain', () => {
+describe('track B — normal copy writes rendered html + markdown source', () => {
+    it('writes rendered html to text/html and markdown source to text/plain', () => {
+        // B03 修复后契约：默认 copy 的 text/html 携带渲染 HTML（Word 保留格式），
+        // text/plain 仍为 markdown 源。
         const clipboard = clipboardWithData('<p>hi</p>', 'hi');
         const { event, setData } = makeEvent();
 
         clipboard.copyHandler(event);
 
-        expect(dataFor(setData, 'text/html')).toBe('');
+        expect(dataFor(setData, 'text/html')).toBe('<p>hi</p>');
         expect(dataFor(setData, 'text/plain')).toBe('hi');
     });
 
@@ -77,16 +79,15 @@ describe('track B — normal copy writes only text/plain', () => {
         expect(setData).not.toHaveBeenCalled();
     });
 
-    it('round-trips: a normal copy produces markdown that pastes losslessly', () => {
-        // text/html empty means `getCopyTextType` classifies the paste as
-        // `onlyMarkdown`, so the markdown source is re-inserted verbatim.
+    it('keeps the markdown source verbatim in text/plain', () => {
+        // text/plain 始终是 markdown 源，供纯文本目标与内部 markdown 分支使用。
         const markdown = '**bold** and `code`';
         const clipboard = clipboardWithData('<p><strong>bold</strong></p>', markdown);
         const { event, setData } = makeEvent();
 
         clipboard.copyHandler(event);
 
-        expect(dataFor(setData, 'text/html')).toBe('');
+        expect(dataFor(setData, 'text/html')).toBe('<p><strong>bold</strong></p>');
         expect(dataFor(setData, 'text/plain')).toBe(markdown);
     });
 });

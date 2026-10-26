@@ -158,6 +158,36 @@ export const MOCK_INVOKE_RESPONSES: Record<string, unknown> = {
   fs_is_executable: false,
   fs_trash_item: null,
   keybinding_dump_keyboard_info: {},
+  // ── bugs/ 用例补充（2026-10-26）：此前未注册、命中即 unhandled-warn+null 的命令。
+  // 默认值与既有「未注册」行为完全一致（返回 null），不改变现有 spec 的行为；
+  // 需要 per-test 语义时用 injectTauriMock overrides / setMockResponse 覆盖。
+  // watcher 链路（B09）：Rust 侧 watcher.rs 已实现，mock 仅需注册避免断链告警
+  watch_file: null,
+  unwatch_file: null,
+  // 文件读取/保存（B01/B05/B06/B09）：fs_read_markdown 默认 null（等价旧行为），
+  // 用例内以 MarkdownFileResult 结构覆盖；markdown_save 记录调用即可
+  fs_read_markdown: null,
+  markdown_save: null,
+  // 链接跳转（B05）：Rust 侧 format_link_click 做相对路径解析+开文件，
+  // mock 只需注册使命令可达、可被 __MOCK_INVOKE_LOG__ 记录
+  format_link_click: null,
+  // 导出（B10）：Rust 侧 export_docx/export_pdf；dialog_save_file 供 HTML 导出路径
+  export_docx: null,
+  export_pdf: null,
+  dialog_save_file: null,
+  // 启动链（bootstrap 走 get_user_data_dir / buffer_load）
+  get_user_data_dir: 'C:\\UserData',
+  buffer_load: null,
+  buffer_save: null,
+  // 最近使用/目录树/菜单勾选（打开文件链路附带调用）
+  recent_add: null,
+  recent_get: [],
+  recent_clear: null,
+  fs_list_tree: null,
+  menu_set_checked: null,
+  menu_set_enabled: null,
+  // 图片自动补全路径（编辑器图片联想）
+  image_auto_path: [],
 }
 
 export function buildMockScript(overrides: MockOverride = {}): string {

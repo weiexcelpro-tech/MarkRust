@@ -11,7 +11,7 @@ use std::time::UNIX_EPOCH;
 use serde::Serialize;
 
 use crate::commands::encoding::{decode, detect_encoding, encode, ReadFileResult};
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 
 /// 与 TS 端 `SerializedStat` 对齐：`mtimeMs` / `ctimeMs` 为 Unix 毫秒时间戳（f64）。
 #[derive(Serialize)]
@@ -344,6 +344,11 @@ pub fn fs_output_file(path: String, data: Vec<u8>) -> AppResult<()> {
 /// - 0：保持不变
 /// - 1：去除多余末尾换行（保留至多一个 `\n`；无末尾换行则不添加）
 /// - 2（默认）：去除全部末尾换行后确保恰好一个 `\n`（空串保持为空）
+///
+/// `expected_mtime_ms`（B09，可选）：调用方在打开/最近一次 stat 时记录的磁盘
+/// mtime（毫秒）。提供时写盘前比对磁盘当前 mtime，不一致说明文件已被外部修改，
+/// 返回结构化冲突错误（`{kind:"conflict", disk_mtime_ms, disk_size}`）且不落盘；
+/// 缺省（旧调用）跳过检测，行为与 1.1.6 完全一致。
 #[tauri::command]
 pub fn markdown_save(
     path: String,
@@ -353,6 +358,7 @@ pub fn markdown_save(
     encoding: Option<String>,
     is_bom: Option<bool>,
     trim_trailing_newline: Option<i32>,
+    expected_mtime_ms: Option<f64>, // B09：可选冲突检测（Tauri IPC 缺省即 None，兼容旧调用）
 ) -> AppResult<bool> {
     let mut content = markdown;
 
@@ -387,7 +393,21 @@ pub fn markdown_save(
         bytes = with_bom;
     }
 
-    // 5. 写文件
+    // 5. B09 保存冲突检测：磁盘 mtime 与预期不一致（文件已被外部修改）时拒绝落盘。
+    //    磁盘文件不存在（首次保存）或 stat 失败时不视为冲突，继续写入。
+    //    0.5ms 容差只吸收毫秒截断/浮点往返误差，不放过真实的外部修改。
+    if let Some(expected) = expected_mtime_ms {
+        if let Ok(stat) = fs_stat(path.clone()) {
+            if (stat.mtime_ms - expected).abs() > 0.5 {
+                return Err(AppError::Conflict {
+                    disk_mtime_ms: stat.mtime_ms,
+                    disk_size: stat.size,
+                });
+            }
+        }
+    }
+
+    // 6. 写文件
     std::fs::write(&path, &bytes)?;
     Ok(true)
 }

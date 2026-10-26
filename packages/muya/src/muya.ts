@@ -156,6 +156,7 @@ export class Muya {
         this.ui = new Ui(this);
         this.i18n = new I18n(this, this.options.locale);
         this._bindFocusBlurEvents();
+        this._bindRedoShortcut();
     }
 
     private _bindFocusBlurEvents() {
@@ -164,6 +165,24 @@ export class Muya {
         });
         this.eventCenter.attachDOMEvent(this.domNode, 'blur', () => {
             this.eventCenter.emit('blur');
+        });
+    }
+
+    // B07-2 修复：桌面壳的快捷键表只映射了 Ctrl+Shift+Z → 重做；Ctrl+Y 未被
+    // 捕获而穿透到编辑器后，contenteditable 的浏览器原生重做只对文本输入生效，
+    // 对 JS 插入的表格行/列等结构操作无效 —— 表现为「插行后 Ctrl+Y 失效」。
+    // 引擎层接管 Ctrl/Cmd+Y → muya.redo()：结构 op 与文本 op 都走 history
+    // 的 redo 管线（undo 已由宿主桥接，行为不变）；preventDefault 阻止浏览器
+    // 原生重做再叠一层导致状态分叉。
+    private _bindRedoShortcut() {
+        this.eventCenter.attachDOMEvent(this.domNode, 'keydown', (event: Event) => {
+            if (!(event instanceof KeyboardEvent) || event.isComposing)
+                return;
+            const isY = event.key === 'y' || event.key === 'Y';
+            if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && isY) {
+                event.preventDefault();
+                this.redo();
+            }
         });
     }
 

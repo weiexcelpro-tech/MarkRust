@@ -16,6 +16,7 @@ declare module '*.woff2?inline' {
 declare module 'joplin-turndown-plugin-gfm';
 declare module 'prismjs/plugins/keep-markup/prism-keep-markup';
 declare module 'prismjs/dependencies';
+declare module 'prismjs/components.js';
 declare module '@marktext/file-icons';
 declare module 'snapsvg-cjs';
 
@@ -45,4 +46,11 @@ declare module '*sequence-diagram-snap' {
     }
     const Diagram: ISequenceDiagramConstructor;
     export default Diagram;
+}
+
+// Vite `import.meta.glob` 的最小可用面（本包未引入 vite/client 类型，
+// 在此本地声明；返回惰性动态导入加载器表）。供 utils/prism/loadLanguage
+// 静态登记 prismjs 语言组件使用。
+interface ImportMeta {
+    glob(pattern: string): Record<string, () => Promise<unknown>>;
 }

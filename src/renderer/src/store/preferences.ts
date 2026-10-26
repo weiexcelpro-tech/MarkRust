@@ -149,7 +149,7 @@ export const usePreferencesStore = defineStore('preferences', {
   state: (): PreferencesState => ({
     autoSave: false,
     autoSaveDelay: 5000,
-    titleBarStyle: 'custom',
+    titleBarStyle: 'native', // B08 修复：与 src-tauri/resources/preferences-default.json 默认对齐，保证 custom⇒decorations:false 不变量成立
     openFilesInNewWindow: false,
     openFolderInNewWindow: false,
     zoom: 1.0,

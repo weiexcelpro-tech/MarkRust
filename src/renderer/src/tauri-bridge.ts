@@ -6,7 +6,13 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, emit } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+// B01: 拖拽打开走 Tauri 原生 drag-drop 桥接（tauri.conf 默认 dragDropEnabled=true，
+// WebView2 的 DOM drop 被 Tauri 拦截，必须经 webview 事件拿路径）
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { confirm } from '@tauri-apps/plugin-dialog'
+// B09: 保存冲突检测/三选对话框 + 已知 mtime 登记
+import { askSaveConflictAction, isSaveConflictError } from './util/saveConflict'
+import { getKnownMtime, refreshKnownMtime, forgetMtime } from './util/fileWatch'
 import pathe from 'pathe'
 
 // MarkdownFileResult: fs_read_markdown 返回值，与 Rust MarkdownFileResult 对齐
@@ -181,6 +187,14 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
       if (!savePath) return
     }
     const { encoding, lineEnding, adjustLineEndingOnSave, trimTrailingNewline } = options || {}
+    // B09: 保存冲突检测——带上打开/最近一次已知 mtime（Rust expected_mtime_ms）。
+    // Rust 命令参数默认按 camelCase 绑定（expectedMtimeMs）；同时附带 snake_case 键
+    // 兼容 Rust 侧显式声明 expected_mtime_ms 参数名的过渡期，多余键会被忽略。
+    const knownMtime = getKnownMtime(savePath)
+    const conflictMtimeArgs = {
+      expectedMtimeMs: knownMtime ?? null,
+      expected_mtime_ms: knownMtime ?? null
+    }
     try {
       await invoke('markdown_save', {
         path: savePath,
@@ -189,15 +203,62 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
         adjustLineEndingOnSave: adjustLineEndingOnSave || false,
         encoding: typeof encoding === 'string' ? encoding : (encoding?.encoding || 'utf-8'),
         isBom: typeof encoding === 'string' ? false : (encoding?.isBom ?? false),
-        trimTrailingNewline: trimTrailingNewline ?? 2
+        trimTrailingNewline: trimTrailingNewline ?? 2,
+        ...conflictMtimeArgs
       })
       // 抑制保存自反馈：1.5s 内忽略同路径的 mt::update-file
       markPathAsSaved(savePath)
+      // B09: 保存成功后刷新已知 mtime，作为下次保存的冲突检测基线
+      void refreshKnownMtime(savePath)
       localEmit('mt::tab-saved', id)
       localEmit('mt::set-pathname', { pathname: savePath, id, filename: pathe.basename(savePath) })
       // P2-23: 保存成功后添加到最近使用列表
       invoke('recent_add', { filePath: savePath }).catch(() => {})
     } catch (e) {
+      // B09: 结构化 Conflict → 三选对话框（覆盖 / 另存为 / 重新加载），不再静默覆盖
+      if (isSaveConflictError(e)) {
+        const action = await askSaveConflictAction(pathe.basename(savePath))
+        if (action === 'overwrite') {
+          // 无条件覆盖：不带 expectedMtimeMs 重试
+          try {
+            await invoke('markdown_save', {
+              path: savePath,
+              markdown,
+              lineEnding: lineEnding || 'lf',
+              adjustLineEndingOnSave: adjustLineEndingOnSave || false,
+              encoding: typeof encoding === 'string' ? encoding : (encoding?.encoding || 'utf-8'),
+              isBom: typeof encoding === 'string' ? false : (encoding?.isBom ?? false),
+              trimTrailingNewline: trimTrailingNewline ?? 2
+            })
+            markPathAsSaved(savePath)
+            void refreshKnownMtime(savePath)
+            localEmit('mt::tab-saved', id)
+            localEmit('mt::set-pathname', { pathname: savePath, id, filename: pathe.basename(savePath) })
+            invoke('recent_add', { filePath: savePath }).catch(() => {})
+          } catch (e2) {
+            localEmit('mt::tab-save-failure', id, String(e2))
+          }
+          return
+        }
+        if (action === 'saveas') {
+          // 另存为：走既有 FILE_SAVE_AS 链路（store 的 bus/ipc 监听会接住本事件）
+          localEmit('mt::editor-ask-file-save-as')
+          return
+        }
+        if (action === 'reload') {
+          // 重新加载：从磁盘读回，经 mt::reload-file 走 loadChange 统一重载
+          try {
+            const fresh = await invoke<MarkdownFileResult>('fs_read_markdown', { path: savePath })
+            localEmit('mt::reload-file', { pathname: savePath, data: fresh })
+          } catch (e2) {
+            console.error('[tauri-bridge] conflict reload failed:', e2)
+            localEmit('mt::tab-save-failure', id, String(e2))
+          }
+          return
+        }
+        // dismiss：什么都不做，保留脏缓冲，冲突状态留给用户稍后处理
+        return
+      }
       localEmit('mt::tab-save-failure', id, String(e))
     }
   },
@@ -246,6 +307,8 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
   'mt::window-tab-closed': async (args) => {
     const pathname = args[0] as string
     if (pathname) {
+      // B09: 关闭标签时同步清除已知 mtime 登记
+      forgetMtime(pathname)
       try { await invoke('unwatch_file', { path: pathname }) } catch { /* tab may not have been watched */ }
     }
   },
@@ -408,6 +471,8 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
       // Tab has a pathname — try to save first, then close
       try {
         const { encoding, lineEnding, adjustLineEndingOnSave, trimTrailingNewline } = tab.options || {}
+        // B09: 关闭前保存同样带冲突检测；冲突时保留标签并提示，不静默覆盖
+        const knownMtime = getKnownMtime(tab.pathname)
         await invoke('markdown_save', {
           path: tab.pathname,
           markdown: tab.markdown,
@@ -415,12 +480,47 @@ const SEND_CHANNEL_EMIT_MAP: Record<string, (args: unknown[]) => unknown> = {
           adjustLineEndingOnSave: adjustLineEndingOnSave || false,
           encoding: typeof encoding === 'string' ? encoding : ((encoding as Record<string, unknown>)?.encoding as string || 'utf-8'),
           isBom: typeof encoding === 'string' ? false : ((encoding as Record<string, unknown>)?.isBom as boolean ?? false),
-          trimTrailingNewline: trimTrailingNewline ?? 2
+          trimTrailingNewline: trimTrailingNewline ?? 2,
+          expectedMtimeMs: knownMtime ?? null,
+          expected_mtime_ms: knownMtime ?? null
         })
         // 抑制保存自反馈：1.5s 内忽略同路径的 mt::update-file
         markPathAsSaved(tab.pathname)
+        void refreshKnownMtime(tab.pathname)
         closeIds.push(tab.id)
       } catch (e) {
+        // B09: 冲突 → 保留该标签不关闭，提示用户手动处理（覆盖/另存/重载）
+        if (isSaveConflictError(e)) {
+          const action = await askSaveConflictAction(tab.filename)
+          if (action === 'overwrite') {
+            try {
+              const { encoding, lineEnding, adjustLineEndingOnSave, trimTrailingNewline } = tab.options || {}
+              await invoke('markdown_save', {
+                path: tab.pathname,
+                markdown: tab.markdown,
+                lineEnding: lineEnding || 'lf',
+                adjustLineEndingOnSave: adjustLineEndingOnSave || false,
+                encoding: typeof encoding === 'string' ? encoding : ((encoding as Record<string, unknown>)?.encoding as string || 'utf-8'),
+                isBom: typeof encoding === 'string' ? false : ((encoding as Record<string, unknown>)?.isBom as boolean ?? false),
+                trimTrailingNewline: trimTrailingNewline ?? 2
+              })
+              markPathAsSaved(tab.pathname)
+              void refreshKnownMtime(tab.pathname)
+              closeIds.push(tab.id)
+            } catch (e2) {
+              console.warn('[tauri-bridge] conflict overwrite failed:', e2)
+            }
+          } else if (action === 'reload') {
+            try {
+              const fresh = await invoke<MarkdownFileResult>('fs_read_markdown', { path: tab.pathname })
+              localEmit('mt::reload-file', { pathname: tab.pathname, data: fresh })
+            } catch (e2) {
+              console.warn('[tauri-bridge] conflict reload failed:', e2)
+            }
+          }
+          // saveas / dismiss：保留标签，不关闭（用户可稍后手动另存）
+          continue
+        }
         // Save failed — ask to discard
         const ok = await confirm(`Save failed: ${e}. Close without saving?`, {
           title: 'Save Failed',
@@ -1208,3 +1308,29 @@ listen<string>('mt::open-recent-file', (event) => {
 // the System B handler on the same document capture phase (e.g. Ctrl+T opened
 // two tabs, Ctrl+H toggled bullet-list on and off). keyboardShortcut.ts
 // contains the merged, complete mapping.
+
+// ── B01 拖拽打开：激活 Tauri 原生 drag-drop 桥接 ────────────────────────────
+// 根因：tauri.conf.json 未设 dragDropEnabled:false（默认 true）→ 真机 WebView2 的
+// DOM drop 被 Tauri 拦截，页面收不到 drop；SEND_CHANNEL_EMIT_MAP 里的 'mt::window::drop'
+// 处理器因此是死代码，webUtils.getPathForFile 恒返回 ''。
+// 修复：订阅 webview 的 tauri://drag-drop（onDragDropEvent），拿到 payload.paths 后
+// 过滤 markdown 文件，走既有打开管线 mt::open-file（fs_read_markdown → mt::open-new-tab
+// → recent_add）；多文件逐个打开，非 md 忽略。测试侧用 emitTauriEvent('tauri://drag-drop')
+// 驱动。真机 DOM 级拖入（如编辑器内拖图）不受影响——Tauri 拦截的是 OS 文件拖放。
+try {
+  getCurrentWebview()
+    .onDragDropEvent((event) => {
+      if (event.payload.type !== 'drop') return
+      const paths = (event.payload as { paths?: string[] }).paths ?? []
+      for (const p of paths) {
+        if (typeof p === 'string' && p && hasMarkdownExtension(p)) {
+          // 复用既有单文件打开管线（与 second-instance 打开路径一致）
+          ipcRenderer.send('mt::open-file', p, {})
+        }
+      }
+    })
+    .catch((e: unknown) => console.warn('[tauri-bridge] onDragDropEvent listen failed:', e))
+} catch (e) {
+  // 缺少 __TAURI_INTERNALS__ 的环境（单元测试/纯浏览器）静默降级
+  console.warn('[tauri-bridge] drag-drop bridge unavailable:', e)
+}

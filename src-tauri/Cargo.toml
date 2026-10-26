@@ -56,11 +56,18 @@ docx-rs = "0.4"
 base64 = "0.22"
 image = "0.25"
 
+# e2e 内容级测试：解包 DOCX（OOXML zip）读取 word/document.xml 做断言。
+# 复用 docx-rs 已带入并锁定在 Cargo.lock 的 zip 8.x，不引入第二个版本。
+[dev-dependencies]
+zip = "8"
+
 # v2.0: PDF 静默导出（WebView2 PrintToPdf，Windows only）
 [target.'cfg(target_os = "windows")'.dependencies]
-webview2-com = "0.38"
-windows-core = "0.61"
-windows = { version = "0.61", features = [
+# e2e 修复：与 tauri/wry 2.12 实际解析的 webview2-com 0.39（windows-core 0.62）对齐，
+# 否则 controller.CoreWebView2() 返回的 ICoreWebView2 与本地 Interface trait 跨 crate 不互认（E0599）
+webview2-com = "0.39"
+windows-core = "0.62"
+windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
 ] }

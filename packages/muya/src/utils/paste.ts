@@ -62,6 +62,52 @@ export async function getPageTitle(url: string) {
     }
 }
 
+/**
+ * Per-table paste normalization for `normalizePastedHTML`: colspan expansion,
+ * first-row `td`→`th`, and (B04) promoting that row into a real `<thead>`.
+ * Exported so the table pipeline is unit-testable without going through the
+ * DOMPurify sanitize step.
+ */
+export function normalizePastedTable(table: HTMLTableElement) {
+    expandTableColspans(table);
+
+    // B04：Excel 等来源的表格没有 thead，首行以裸 <tr> 落在 <tbody> 内，
+    // 且其前常有 <colgroup>/空白文本节点。turndown-plugin-gfm 的
+    // isHeadingRow 只认「THEAD 内的行」或「TABLE/首个 tbody 的直接首行
+    // 且全为 th」——这类表即使首行已转 th 也判不出表头，于是插件在
+    // rules.table 里补出一行空表头，真实表头降级为首条数据行。
+    // 修法：首行 td→th 后把它提升为真正的 <thead>，让 GFM 插件经 THEAD
+    // 分支稳定识别表头。
+    const row = table.querySelector('tr');
+    if (row && row.firstElementChild?.tagName !== 'TH') {
+        [...row.children].forEach((cell) => {
+            const th = document.createElement('th');
+            th.innerHTML = cell.innerHTML;
+            cell.replaceWith(th);
+        });
+    }
+    if (row && row.children.length > 0 && row.parentElement?.tagName !== 'THEAD') {
+        const thead = document.createElement('thead');
+        row.parentElement?.insertBefore(thead, row);
+        thead.appendChild(row);
+    }
+    const paragraphs = Array.from(table.querySelectorAll('p'));
+
+    for (const p of paragraphs) {
+        const span = document.createElement('span');
+        span.innerHTML = p.innerHTML;
+        p.replaceWith(span);
+    }
+
+    const tds = table.querySelectorAll('td');
+
+    for (const td of tds) {
+        const rawHtml = td.innerHTML;
+        if (/<br>/.test(rawHtml))
+            td.innerHTML = rawHtml.replace(/<br>/g, '&lt;br&gt;');
+    }
+}
+
 export async function normalizePastedHTML(
     html: string,
     options: INormalizePastedHTMLOptions = {},
@@ -85,33 +131,8 @@ export async function normalizePastedHTML(
     // Special process for turndown.js, needed for Number app on macOS.
     const tables = Array.from(tempWrapper.querySelectorAll('table'));
 
-    for (const table of tables) {
-        expandTableColspans(table);
-
-        const row = table.querySelector('tr');
-        if (row && row.firstElementChild?.tagName !== 'TH') {
-            [...row.children].forEach((cell) => {
-                const th = document.createElement('th');
-                th.innerHTML = cell.innerHTML;
-                cell.replaceWith(th);
-            });
-        }
-        const paragraphs = Array.from(table.querySelectorAll('p'));
-
-        for (const p of paragraphs) {
-            const span = document.createElement('span');
-            span.innerHTML = p.innerHTML;
-            p.replaceWith(span);
-        }
-
-        const tds = table.querySelectorAll('td');
-
-        for (const td of tds) {
-            const rawHtml = td.innerHTML;
-            if (/<br>/.test(rawHtml))
-                td.innerHTML = rawHtml.replace(/<br>/g, '&lt;br&gt;');
-        }
-    }
+    for (const table of tables)
+        normalizePastedTable(table);
 
     // Prevent it parse into a link if copy a url.
     const links: HTMLElement[] = Array.from(

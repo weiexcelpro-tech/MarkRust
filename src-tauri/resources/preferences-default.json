@@ -1,7 +1,7 @@
 {
   "autoSave": false,
   "autoSaveDelay": 5000,
-  "titleBarStyle": "custom",
+  "titleBarStyle": "native",
   "openFilesInNewWindow": false,
   "openFolderInNewWindow": false,
   "zoom": 1.0,

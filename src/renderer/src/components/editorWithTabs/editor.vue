@@ -112,6 +112,8 @@ import {
   type ILocale
 } from '@muyajs/core'
 import { exportStyledHTML, type HeaderFooterPart } from '@/util/exportHtml'
+// B11: docx 导出前的 mermaid→PNG data URI 预处理
+import { replaceMermaidWithPngImages } from '@/util/mermaidExport'
 import { applyCursor, isIndexCursor } from '@/util/cursor'
 import bus from '@/bus'
 import { DEFAULT_EDITOR_FONT_FAMILY, DEFAULT_CODE_FONT_FAMILY } from '@/config'
@@ -832,6 +834,45 @@ const jumpClick = (linkInfo: { href?: string | null } | null) => {
   editorStore.FORMAT_LINK_CLICK({ data: { href: href ?? null }, dirname: window.DIRNAME })
 }
 
+// ── B05④ 对标 Typora：普通单击已渲染链接即跳转 ─────────────────────────────
+// muya linkMouseEvents 对渲染态锚点 preventDefault 后仅放光标（packages/muya 本任务
+// 禁改），但其监听挂在冒泡阶段且不阻断传播——可在 renderer 捕获阶段先行识别点击目标。
+// 选择器与 muya linkMouseEvents 的 LINK_SELECTOR / .mu-html-preview a[href] 对齐。
+const LINK_PLAIN_CLICK_SELECTOR = [
+  'span.mu-inline-rule.mu-link',
+  'a.mu-inline-rule.mu-reference-link',
+  'a.mu-inline-rule.mu-raw-html',
+  'a.mu-inline-rule.mu-auto-link',
+  'a.mu-inline-rule.mu-auto-link-extension',
+  '.mu-html-preview a[href]'
+].join(', ')
+let linkPlainClickHandler: ((event: MouseEvent) => void) | null = null
+const handleLinkPlainClick = (event: MouseEvent): void => {
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
+  // Ctrl/Cmd+Click 仍走 muya format-click 契约（双通道并存，避免双开）
+  const selection = window.getSelection()
+  if (selection && selection.toString().length > 0) return // 拖选结束的 click 不劫持
+  const target = event.target
+  if (!(target instanceof Element)) return
+  const el = target.closest(LINK_PLAIN_CLICK_SELECTOR) as HTMLElement | null
+  if (!el) return
+  // 仅渲染态（预览）的 markdown/引用链接跳转；光标在链接内编辑（[..](..) 源码可见）时不跳
+  if (el.classList.contains('mu-link') || el.classList.contains('mu-reference-link')) {
+    const prev = el.previousElementSibling
+    if (!prev || !prev.classList.contains('mu-hide')) return
+  }
+  // 需是渲染块（data-raw）或 raw-html 预览锚点，避免误伤其它 mu-* 元素
+  if (!el.dataset.raw && !el.closest('.mu-html-preview')) return
+  // href 提取对齐 muya getLinkInfo.readHref：优先 href 属性，其次 snabbdom 写入的 DOM 属性
+  let href = el.getAttribute('href') ?? ''
+  if (!href) {
+    const prop = (el as HTMLElement & { href?: unknown }).href
+    if (typeof prop === 'string') href = prop
+  }
+  if (!href) return
+  editorStore.FORMAT_LINK_CLICK({ data: { href }, dirname: window.DIRNAME })
+}
+
 interface ImagePathSuggestion {
   type: 'directory' | 'file' | string
   file: string
@@ -1480,9 +1521,12 @@ const handleExport = async (options: unknown) => {
       // 字体设置：当用户在导出弹窗勾选"覆盖字体"时，opts 中会携带 fontFamily/fontSize/lineHeight
       try {
         const filename = (htmlTitle || '')
+        // B11: docx 导出前把 ```mermaid 源码块替换为 PNG data URI 图片（与 Rust 契约），
+        // 否则 Rust 侧无渲染路径，docx 内会是 Consolas 源码文本；失败块保留源码继续。
+        const exportMarkdown = await replaceMermaidWithPngImages(markdown, editor.value ?? undefined)
         editorStore.EXPORT({
           type,
-          content: markdown,
+          content: exportMarkdown,
           filename,
           pathname: props.pathname || '',
           fontFamily: (opts.fontFamily as string | undefined) ?? undefined,
@@ -2368,6 +2412,10 @@ onMounted(() => {
     }
   )
 
+  // B05④：普通单击渲染态链接即跳转（捕获阶段先于 muya 的冒泡光标处理，不阻断其执行）
+  linkPlainClickHandler = handleLinkPlainClick
+  container.addEventListener('click', linkPlainClickHandler, true)
+
   editor.value.on('preview-image', ({ data }: { data: string }) => {
     if (imageViewer) {
       imageViewer.destroy()
@@ -2462,6 +2510,13 @@ onBeforeUnmount(() => {
     container?.removeEventListener('scroll', scrollHandler)
   }
   scrollHandler = null
+
+  // B05④：摘除普通单击跳转的捕获监听
+  if (linkPlainClickHandler) {
+    const container = getScrollContainer()
+    container?.removeEventListener('click', linkPlainClickHandler, true)
+    linkPlainClickHandler = null
+  }
 
   resizeObserverForEditor.disconnect()
 

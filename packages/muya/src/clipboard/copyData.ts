@@ -410,7 +410,10 @@ export function writeClipboardData(
         case CopyType.NORMAL: {
             if (text.length === 0)
                 return;
-            event.clipboardData.setData('text/html', '');
+            // B03 修复：默认 copy 同时写入渲染态 HTML —— Word/邮件等富文本目标
+            // 粘贴时保留标题/粗体/表格等格式；text/plain 仍为 markdown 源，
+            // 内部粘贴与「复制为 Markdown/HTML」路径不受影响。
+            event.clipboardData.setData('text/html', html);
             event.clipboardData.setData('text/plain', text);
             break;
         }
