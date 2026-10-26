@@ -710,3 +710,116 @@ fn tc_b11_03_data_uri_image_embedded_and_wide_image_scaled() {
         cx
     );
 }
+
+// ---------------------------------------------------------------------------
+// TC-B10-08：真实事故回归 —— 中文长文档 + 不规则表格的 XML 良构性
+// ---------------------------------------------------------------------------
+// 事故（2026-10-26 手工测试发现）：用户导出《TeleAgent插件机制 PRD》时，
+// v1 注入器在中文多字节偏移 + 空单元格不规则表格上错位拼接，吃掉 `<w:tblPr>`
+// 开标签，产出的 docx 被 Word 与 LibreOffice 双双拒收。
+// 本用例用同款输入结构钉死：导出成功 + document.xml 可被严格 XML 解析 +
+// 每个表格首行都有 tblHeader + 无「吃标签」损坏特征。
+
+/// 与事故文档同构的输入：中文标题 + 首行含空单元格的不规则表格（用户原文风格）。
+const REAL_WORLD_MD: &str = r#"
+# 【PRD】TeleAgent插件机制
+
+|  | | 产品经理 | 状态 | 当前版本 | 最近更新 | | |---|---|---|---| | | TeleAgent产品组 | 草稿 | v0.9 | 2026/10/25 | |  |
+
+## 各端涉及情况
+
+|  | | 端 | 是否涉及 | 说明 | | |---|---|---|---| | | 桌面端 | 是 | 核心承载 | | | IM 端 | 是 | 审批与摘要 | |
+
+## 6.4 插件工具
+
+| 项 | 说明 |
+|---|---|
+| 规则 | 插件工具与内置工具同池，由模型按需调用；已启用插件的工具对全部会话可用 |
+| 规则 | 单会话默认暴露给模型 ≤40 个工具，超出按需检索召回；单会话工具描述合计 ≤8k tokens |
+| 异常 | 工具执行失败 → 错误信息回给模型自行调整重试；执行超时可取消，取消不记为失败 |
+
+## 6.5 常驻提示词
+
+| 项 | 说明 |
+|---|---|
+| 规则 | 分两类：静态段与动态段，动态段每次请求生成，拼接在最末，不破坏缓存 |
+| 规则 | 与技能分工：技能需用户 `@` 引用才进上下文；常驻提示词随插件启用即生效 |
+"#;
+
+fn validate_xml_strict(xml: &str) {
+    let mut reader = quick_xml::Reader::from_str(xml);
+    loop {
+        match reader.read_event() {
+            Ok(quick_xml::events::Event::Eof) => break,
+            Ok(_) => {}
+            Err(e) => panic!("TC-B10-08: document.xml XML 良构性校验失败（损坏文件）: {e}"),
+        }
+    }
+}
+
+#[test]
+fn tc_b10_08_real_world_chinese_doc_xml_wellformed() {
+    let (bytes, _, _) = run_export(&make_req(REAL_WORLD_MD));
+    let (xml, _) = unpack_docx(&bytes);
+
+    // 1) 严格 XML 良构（事故的直接失败点：mismatched tag）
+    validate_xml_strict(&xml);
+
+    // 2) 无「吃标签」损坏特征：tblHeader 后紧跟的必须是合法标签，不得直接拼属性文本
+    assert!(
+        !xml.contains("tblHeader/>w:"),
+        "TC-B10-08: 发现注入吃标签损坏特征 `tblHeader/>w:`（v1 事故指纹）"
+    );
+
+    // 3) 每个表格的首行都带 tblHeader（跨页重复表头目标达成）
+    // 注：事故文档中「|  | | 产品经理 | …」式单行伪表格不构成 GFM 表格（解析为段落），
+    // 仅 6.4/6.5 两个规范表格计入。
+    let tbl_count = xml.matches("<w:tbl>").count();
+    assert!(
+        tbl_count >= 2,
+        "TC-B10-08: 输入应产生 >=2 个表格，实际 {}",
+        tbl_count
+    );
+    let mut cursor = 0usize;
+    for i in 0..tbl_count {
+        let tbl_start = xml[cursor..]
+            .find("<w:tbl>")
+            .unwrap_or_else(|| panic!("TC-B10-08: 第 {i} 个表格应存在"));
+        let tbl_abs = cursor + tbl_start;
+        let tbl_end = xml[tbl_abs..]
+            .find("</w:tbl>")
+            .unwrap_or_else(|| panic!("TC-B10-08: 第 {i} 个表格应有闭合标签"));
+        let table = &xml[tbl_abs..tbl_abs + tbl_end];
+        let tr_rel = table.find("<w:tr>").expect("TC-B10-08: 表格应含行");
+        let first_row = &table[tr_rel..];
+        let first_row_end = first_row.find("</w:tr>").expect("TC-B10-08: 首行应闭合");
+        assert!(
+            first_row[..first_row_end].contains("<w:tblHeader/>"),
+            "TC-B10-08: 第 {i} 个表格首行应含 <w:tblHeader/>（跨页表头），实际前 {} 字节: {}",
+            first_row_end,
+            &first_row[..first_row_end.min(200)]
+        );
+        cursor = tbl_abs + tbl_end;
+    }
+}
+
+/// 事故文档再生工具：设 MARKRUST_REGEN_DOC=<输入.md>|<输出.docx> 后运行
+/// `cargo test --test export_docx_content regenerate_user_document -- --ignored`
+/// 用修复后的管线从用户 markdown 重新生成可打开的 docx。
+#[test]
+#[ignore = "手动工具：需 MARKRUST_REGEN_DOC 环境变量（<输入.md>|<输出.docx>）"]
+fn regenerate_user_document() {
+    let spec = std::env::var("MARKRUST_REGEN_DOC").expect("需要 MARKRUST_REGEN_DOC=<in.md>|<out.docx>");
+    let (in_path, out_path) = spec
+        .split_once('|')
+        .expect("格式应为 <输入.md>|<输出.docx>");
+    let md = std::fs::read_to_string(in_path).expect("读取输入 markdown");
+    let (bytes, image_count, warnings) = run_export(&make_req(&md));
+    std::fs::write(out_path, &bytes).expect("写出 docx");
+    println!(
+        "regenerated: {} bytes, images={}, warnings={:?}",
+        bytes.len(),
+        image_count,
+        warnings
+    );
+}

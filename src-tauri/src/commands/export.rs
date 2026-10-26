@@ -509,35 +509,82 @@ fn page_size_inches(size: &str) -> (f32, f32) {
 /// docx-rs 0.4.22 未提供 table_header API（TableRowProperty 无 tblHeader 字段、
 /// XMLBuilder 无对应元素），无法在构建树上直接标记；此处对 `Docx::build()` 产出的
 /// `XMLDocx.document`（pub 字段，即 word/document.xml 字节）做 pack 前后处理。
-/// docx-rs 对每行恒输出空 `<w:trPr ...>`，且各 `<w:tbl>` 后的第一个 trPr 即首行属性。
+///
+/// **实现 v2（真实事故修复）**：v1 用「找 `<w:tbl>` 后任意位置的 `<w:trPr`」的跨串
+/// 索引拼接，在中文长文档（多字节偏移 + 不规则空单元格表格）上发生错位，吃掉
+/// `<w:tblPr>` 开标签产出 Word/LibreOffice 拒收的损坏文件。v2 改为**单游标推进**：
+/// 所有切片取自同一 `rest`，且只锚定「本表 `</w:tbl>` 之前的首个 `<w:tr>`」，
+/// 不可能的跨表错配在结构上被消除。调用方仍须 pack 前跑 `validate_document_xml`
+/// 兜底（坏则报错，绝不产出损坏文件）。
 fn inject_table_header_flag(document_xml: &[u8]) -> Vec<u8> {
     let xml = match std::str::from_utf8(document_xml) {
         Ok(s) => s.to_string(),
         Err(_) => return document_xml.to_vec(), // 非 UTF-8（不可能出现）时原样返回
     };
-    let tbl_marker = "<w:tbl>";
-    let trpr_marker = "<w:trPr";
-    let mut result = String::with_capacity(xml.len() + 64);
-    let mut rest = xml.as_str();
-    while let Some(tbl_pos) = rest.find(tbl_marker) {
-        let after_tbl = &rest[tbl_pos + tbl_marker.len()..];
-        match after_tbl.find(trpr_marker) {
-            Some(trpr_rel) => {
-                let trpr_abs = tbl_pos + tbl_marker.len() + trpr_rel;
-                let gt_rel = match after_tbl[trpr_rel..].find('>') {
-                    Some(g) => g,
-                    None => break,
-                };
-                // 把该行的 trPr 开标签整体替换为「开标签 + tblHeader」
-                result.push_str(&rest[..trpr_abs]);
-                result.push_str("<w:trPr><w:tblHeader/>");
-                rest = &after_tbl[gt_rel + 1..];
+    let mut out = String::with_capacity(xml.len() + 256);
+    let mut rest: &str = &xml;
+    while let Some(tbl_rel) = rest.find("<w:tbl>") {
+        let after_tbl = tbl_rel + "<w:tbl>".len();
+        // 首行 `<w:tr>` 必须出现在本表 `</w:tbl>` 之前，否则视为空表跳过（防跨表错配）
+        let tbl_end_rel = rest[after_tbl..].find("</w:tbl>").map(|p| p + after_tbl);
+        let first_tr_rel = rest[after_tbl..]
+            .find("<w:tr>")
+            .map(|p| p + after_tbl)
+            .filter(|t| tbl_end_rel.map_or(true, |e| *t < e));
+        match first_tr_rel {
+            Some(tr_abs) => {
+                // 表属性块（tblPr/tblGrid）原样拷贝到首行 `<w:tr>` 之后
+                let after_tr = tr_abs + "<w:tr>".len();
+                out.push_str(&rest[..after_tr]);
+                rest = &rest[after_tr..];
+                if rest.starts_with("<w:trPr") {
+                    // 首行已有 trPr：按开/自闭合两种形态整体替换为「含 tblHeader 的闭合 trPr」。
+                    // 事故教训：docx-rs 输出自闭合 `<w:trPr />`，若只拼开标签会产出
+                    // 未闭合的 `<w:trPr><w:tblHeader/>`，XML 良构性即破坏。
+                    let gt = rest.find('>').expect("trPr 开标签必含 '>'");
+                    let self_closing = rest.as_bytes()[gt - 1] == b'/';
+                    if self_closing {
+                        out.push_str("<w:trPr><w:tblHeader/></w:trPr>");
+                    } else {
+                        out.push_str("<w:trPr><w:tblHeader/>");
+                    }
+                    rest = &rest[gt + 1..];
+                } else {
+                    // 首行无 trPr：就地插入完整 trPr
+                    out.push_str("<w:trPr><w:tblHeader/></w:trPr>");
+                }
             }
-            None => break, // 表格无任何行（空表），后续内容原样保留
+            None => {
+                // 空表（无行）：原样拷贝 `<w:tbl>` 并推进游标，避免死循环
+                out.push_str(&rest[..after_tbl]);
+                rest = &rest[after_tbl..];
+            }
         }
     }
-    result.push_str(rest);
-    result.into_bytes()
+    out.push_str(rest);
+    out.into_bytes()
+}
+
+/// B10 加固：pack 前校验 document.xml 良构性。
+/// quick-xml 默认 `check_end_names=true`，可捕获「开始/结束标签错配」这类结构性
+/// 损坏（真实事故：注入错位导致 Word/LibreOffice 拒收）。校验失败即报错，
+/// 绝不产出损坏文件。
+fn validate_document_xml(document_xml: &[u8]) -> AppResult<()> {
+    let text = std::str::from_utf8(document_xml)
+        .map_err(|e| AppError::Other(format!("document.xml 非 UTF-8: {e}")))?;
+    let mut reader = quick_xml::Reader::from_str(text);
+    loop {
+        match reader.read_event() {
+            Ok(quick_xml::events::Event::Eof) => break,
+            Ok(_) => {}
+            Err(e) => {
+                return Err(AppError::Other(format!(
+                    "document.xml 良构性校验失败（拒绝导出损坏文件）: {e}"
+                )))
+            }
+        }
+    }
+    Ok(())
 }
 
 /// 辅助：逐个 add_run 构建 Paragraph（docx-rs 只有 add_run，没有 add_runs）。
@@ -1053,6 +1100,8 @@ pub async fn markdown_to_docx(req: &ExportDocxRequest) -> AppResult<(Vec<u8>, u3
     let mut xml_docx = doc.build();
     // B10 修复（③）：pack 前为每个表格首行注入 <w:tblHeader/>（见 inject_table_header_flag）
     xml_docx.document = inject_table_header_flag(&xml_docx.document);
+    // B10 加固：pack 前强制校验良构性——后处理失配时在源头报错，绝不产出损坏文件
+    validate_document_xml(&xml_docx.document)?;
     xml_docx
         .pack(&mut buf)
         .map_err(|e| AppError::Other(format!("DOCX 生成失败: {}", e)))?;

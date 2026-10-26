@@ -55,6 +55,8 @@ pulldown-cmark = { version = "0.12", default-features = false, features = ["html
 docx-rs = "0.4"
 base64 = "0.22"
 image = "0.25"
+# B10 加固：pack 前对 document.xml 做良构性校验（真实事故：注入错位产出损坏 docx）
+quick-xml = "0.42"
 
 # e2e 内容级测试：解包 DOCX（OOXML zip）读取 word/document.xml 做断言。
 # 复用 docx-rs 已带入并锁定在 Cargo.lock 的 zip 8.x，不引入第二个版本。
