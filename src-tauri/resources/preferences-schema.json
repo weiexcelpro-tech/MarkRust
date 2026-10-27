@@ -407,5 +407,37 @@
     "description": "Watcher--Whether to use polling. Polling may leads to high CPU utilization but is necessary to watch files over a network.--internal",
     "type": "boolean",
     "default": false
+  },
+  "exportImageEmbed": {
+    "description": "Export--Image embedding strategy when exporting: embed as base64/data URI or keep external file:// reference.",
+    "enum": ["embed", "reference"],
+    "default": "embed"
+  },
+  "exportImageResize": {
+    "description": "Export--Image resize strategy: original keeps image as-is, auto downscales wide images to exportImageMaxWidth.",
+    "enum": ["original", "auto"],
+    "default": "auto"
+  },
+  "exportImageMaxWidth": {
+    "description": "Export--Maximum image width in pixels when exportImageResize=auto. Images wider than this are proportionally downscaled.",
+    "type": "number",
+    "minimum": 256,
+    "maximum": 4096,
+    "default": 1024
+  },
+  "exportShowConfigDialog": {
+    "description": "Export--Whether to always show the export configuration dialog before exporting. When false, uses last saved config silently.",
+    "type": "boolean",
+    "default": true
+  },
+  "docxPageSize": {
+    "description": "Export--Page size for DOCX export.",
+    "enum": ["A4", "Letter"],
+    "default": "A4"
+  },
+  "docxPageMargin": {
+    "description": "Export--Page margin preset for DOCX export.",
+    "enum": ["normal", "narrow", "wide"],
+    "default": "normal"
   }
 }

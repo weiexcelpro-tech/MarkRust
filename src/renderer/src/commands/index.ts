@@ -147,19 +147,27 @@ const commands: CommandDescriptor[] = [
     id: 'file.export-file',
     subcommands: [
       {
-        id: 'file.export-file-html',
-        description: 'Export as HTML',
-        execute: async() => {
-          await delay(50)
-          bus.emit('showExportDialog', 'styledHtml')
-        }
-      },
-      {
         id: 'file.export-file-pdf',
         description: 'Export as PDF',
         execute: async() => {
           await delay(50)
           bus.emit('showExportDialog', 'pdf')
+        }
+      },
+      {
+        id: 'file.export-file-docx',
+        description: 'Export as DOCX',
+        execute: async() => {
+          await delay(50)
+          bus.emit('showExportDialog', 'docx')
+        }
+      },
+      {
+        id: 'file.export-file-html',
+        description: 'Export as HTML',
+        execute: async() => {
+          await delay(50)
+          bus.emit('showExportDialog', 'html')
         }
       }
     ]
@@ -196,6 +204,18 @@ const commands: CommandDescriptor[] = [
     id: 'edit.delete-paragraph',
     execute: async() => {
       focusEditorAndExecute(() => bus.emit('deleteParagraph', 'deleteParagraph'))
+    }
+  },
+  {
+    id: 'edit.copy-as-rich',
+    execute: async() => {
+      focusEditorAndExecute(() => bus.emit('copyAsRich', 'copyAsRich'))
+    }
+  },
+  {
+    id: 'edit.paste-as-plaintext',
+    execute: async() => {
+      focusEditorAndExecute(() => bus.emit('pasteAsPlainText', 'pasteAsPlainText'))
     }
   },
   {

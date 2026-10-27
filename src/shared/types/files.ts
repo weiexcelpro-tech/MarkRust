@@ -83,6 +83,10 @@ export interface IFileState {
   searchMatches: FileSearchMatches
   scrollTop: number
   muyaIndexCursor: unknown
+  // Raw CodeMirror cursor (un-adjusted) for accurate source-code mode cursor
+  // restoration. `muyaIndexCursor` has line offsets from `adjustCursor` for
+  // the Muya engine, which are wrong when used directly as CM positions.
+  sourceCodeCursor?: unknown
   notifications: FileNotification[]
   lastSavedHistoryId?: number
   // Muya block tree; only populated for the actively edited tab.

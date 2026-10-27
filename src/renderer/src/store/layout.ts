@@ -84,7 +84,6 @@ export const useLayoutStore = defineStore('layout', () => {
     // each known field as-is (no normalization here; SET_SIDE_BAR_WIDTH owns
     // sideBarWidth's normalization), and skip unknown keys silently.
     if (layout.rightColumn !== undefined) {
-      console.log('[SB-DBG] SET_LAYOUT rightColumn: %s -> %s', rightColumn.value, layout.rightColumn)
       rightColumn.value = layout.rightColumn
     }
     if (layout.showSideBar !== undefined) showSideBar.value = !!layout.showSideBar
@@ -154,7 +153,6 @@ export const useLayoutStore = defineStore('layout', () => {
 
   function LISTEN_FOR_LAYOUT(): void {
     window.electron.ipcRenderer.on('mt::set-view-layout', (_e, layout) => {
-      console.log('[SB-DBG] mt::set-view-layout received:', JSON.stringify(layout))
       const l = layout as unknown as LayoutPartial
       if (l.rightColumn) {
         SET_LAYOUT({
@@ -189,7 +187,6 @@ export const useLayoutStore = defineStore('layout', () => {
     })
 
     window.electron.ipcRenderer.on('mt::sidebar-show-settings', () => {
-      console.log('[SB-DBG] mt::sidebar-show-settings received, rightColumn was:', rightColumn.value)
       SET_LAYOUT({ rightColumn: 'settings', showSideBar: true })
     })
   }

@@ -52,3 +52,13 @@ $RECYCLE.BIN/
 
 # AIGC 水印（如生成）
 *aigc*
+
+# Vite 临时文件
+.vite-err.txt
+.vite-out.txt
+
+# 测试物料与调试输出
+test-export/
+tests/e2e/screenshots/
+src-tauri/pr-template-export.md
+src-tauri/test-matrix.md

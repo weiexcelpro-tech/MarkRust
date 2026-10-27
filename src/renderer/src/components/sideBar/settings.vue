@@ -434,7 +434,7 @@
               <label>{{ $t('preferences.search.items.theme') }}</label>
               <select :value="prefs.theme" @change="set('theme', ($event.target as HTMLSelectElement).value)"
                 :disabled="prefs.followSystemTheme" :class="{ disabled: prefs.followSystemTheme }">
-                <optgroup :label="$t('preferences.general.misc.language.english') /* Light */">
+                <optgroup label="Light">
                   <option value="light">Light</option>
                   <option value="graphite">Graphite</option>
                   <option value="ulysses">Ulysses</option>
@@ -590,7 +590,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { usePreferencesStore } from '@/store/preferences'
 import { invoke } from '@tauri-apps/api/core'
 
@@ -646,14 +646,20 @@ const themeLabel = (name: string): string => {
   return name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
-// System font list (loaded once on mount)
+// System font list (lazy-loaded on first expand of Editor section)
 const systemFonts = ref<string[]>([])
-onMounted(async () => {
+let fontsLoaded = false
+const loadFonts = async (): Promise<void> => {
+  if (fontsLoaded) return
+  fontsLoaded = true
   try {
     systemFonts.value = await invoke<string[]>('fonts_list')
   } catch {
     systemFonts.value = []
   }
+}
+watch(() => expanded.editor, (open) => {
+  if (open) loadFonts()
 })
 </script>
 
@@ -668,7 +674,7 @@ onMounted(async () => {
 
 .settings-header {
   padding: 10px 16px;
-  border-bottom: 1px solid var(--side-bar-border-color, #e0e0e0);
+  border-bottom: 1px solid var(--sideBarBorderColor, rgba(255,255,255,0.1));
 }
 
 .settings-header h3 {
@@ -677,7 +683,7 @@ onMounted(async () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--side-bar-title-color, #333);
+  color: var(--sideBarTitleColor, rgba(255,255,255,0.8));
 }
 
 .settings-body {
@@ -696,7 +702,7 @@ onMounted(async () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--side-bar-group-color, #999);
+  color: var(--sideBarTextColor, rgba(255,255,255,0.4));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -704,7 +710,7 @@ onMounted(async () => {
 }
 
 .group-label:hover {
-  color: var(--side-bar-color, #666);
+  color: var(--sideBarColor, #666);
 }
 
 .chevron {
@@ -731,9 +737,9 @@ onMounted(async () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  color: var(--side-bar-group-color, #aaa);
+  color: var(--sideBarGroupColor, #aaa);
   padding: 4px 0 2px;
-  border-top: 1px solid var(--side-bar-border-color, rgba(0,0,0,0.06));
+  border-top: 1px solid var(--sideBarBorderColor, rgba(0,0,0,0.06));
   margin-top: 2px;
 }
 
@@ -743,7 +749,7 @@ onMounted(async () => {
   justify-content: space-between;
   padding: 3px 0;
   font-size: 12px;
-  color: var(--side-bar-color, #333);
+  color: var(--sideBarColor, rgba(255,255,255,0.6));
   gap: 8px;
 }
 
@@ -755,7 +761,7 @@ onMounted(async () => {
 
 .setting-row.stacked label {
   font-size: 10px;
-  color: var(--side-bar-group-color, #888);
+  color: var(--sideBarTextColor, rgba(255,255,255,0.4));
   margin-bottom: 1px;
 }
 
@@ -771,10 +777,10 @@ onMounted(async () => {
 .setting-row select {
   padding: 2px 4px;
   font-size: 11px;
-  border: 1px solid var(--side-bar-border-color, #ccc);
+  border: 1px solid var(--sideBarBorderColor, rgba(255,255,255,0.1));
   border-radius: 3px;
-  background: var(--side-bar-input-bg, #fff);
-  color: var(--side-bar-color, #333);
+  background: var(--sideBarBgColor, #232323);
+  color: var(--sideBarColor, rgba(255,255,255,0.6));
   cursor: pointer;
   max-width: 130px;
   min-width: 60px;
@@ -789,20 +795,20 @@ onMounted(async () => {
   width: 52px;
   padding: 2px 4px;
   font-size: 11px;
-  border: 1px solid var(--side-bar-border-color, #ccc);
+  border: 1px solid var(--sideBarBorderColor, rgba(255,255,255,0.1));
   border-radius: 3px;
-  background: var(--side-bar-input-bg, #fff);
-  color: var(--side-bar-color, #333);
+  background: var(--sideBarBgColor, #232323);
+  color: var(--sideBarColor, rgba(255,255,255,0.6));
 }
 
 .text-input {
   width: 100%;
   padding: 3px 6px;
   font-size: 11px;
-  border: 1px solid var(--side-bar-border-color, #ccc);
+  border: 1px solid var(--sideBarBorderColor, rgba(255,255,255,0.1));
   border-radius: 3px;
-  background: var(--side-bar-input-bg, #fff);
-  color: var(--side-bar-color, #333);
+  background: var(--sideBarBgColor, #232323);
+  color: var(--sideBarColor, rgba(255,255,255,0.6));
   box-sizing: border-box;
 }
 
@@ -814,7 +820,7 @@ onMounted(async () => {
 
 .range-value {
   font-size: 10px;
-  color: var(--side-bar-group-color, #888);
+  color: var(--sideBarTextColor, rgba(255,255,255,0.4));
   min-width: 32px;
   text-align: right;
 }
@@ -830,7 +836,7 @@ onMounted(async () => {
   width: 100%;
   background: transparent;
   color: var(--editorColor);
-  border: 1px solid var(--side-bar-border-color, #ccc);
+  border: 1px solid var(--sideBarBorderColor, rgba(255,255,255,0.1));
   border-radius: 3px;
   padding: 6px 8px;
   font-family: 'DejaVu Sans Mono', 'Consolas', monospace;

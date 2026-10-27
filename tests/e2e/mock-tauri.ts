@@ -126,7 +126,18 @@ export const MOCK_INVOKE_RESPONSES: Record<string, unknown> = {
   dialog_open_file: null,
   dialog_open_directory: null,
   ask_for_image_path: null,
-  updater_check_latest: { has_update: false, latest_version: '0.1.0', download_url: '', notes: '' },
+  image_to_data_uri: {
+    // 1x1 transparent PNG — a minimal valid base64 image so the <img> element
+    // can load in the test browser without hitting a real file or asset URL.
+    originalSrc: '',
+    dataUri: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    originalWidth: null,
+    resizedWidth: null,
+    originalSize: null,
+    finalSize: null,
+    error: null,
+  },
+  updater_check_latest: { has_update: false, latest_version: '1.1.5', download_url: '', notes: '' },
   clipboard_read_text: '',
   clipboard_write_text: null,
   clipboard_guess_file_path: null,
@@ -147,6 +158,36 @@ export const MOCK_INVOKE_RESPONSES: Record<string, unknown> = {
   fs_is_executable: false,
   fs_trash_item: null,
   keybinding_dump_keyboard_info: {},
+  // ── bugs/ 用例补充（2026-10-26）：此前未注册、命中即 unhandled-warn+null 的命令。
+  // 默认值与既有「未注册」行为完全一致（返回 null），不改变现有 spec 的行为；
+  // 需要 per-test 语义时用 injectTauriMock overrides / setMockResponse 覆盖。
+  // watcher 链路（B09）：Rust 侧 watcher.rs 已实现，mock 仅需注册避免断链告警
+  watch_file: null,
+  unwatch_file: null,
+  // 文件读取/保存（B01/B05/B06/B09）：fs_read_markdown 默认 null（等价旧行为），
+  // 用例内以 MarkdownFileResult 结构覆盖；markdown_save 记录调用即可
+  fs_read_markdown: null,
+  markdown_save: null,
+  // 链接跳转（B05）：Rust 侧 format_link_click 做相对路径解析+开文件，
+  // mock 只需注册使命令可达、可被 __MOCK_INVOKE_LOG__ 记录
+  format_link_click: null,
+  // 导出（B10）：Rust 侧 export_docx/export_pdf；dialog_save_file 供 HTML 导出路径
+  export_docx: null,
+  export_pdf: null,
+  dialog_save_file: null,
+  // 启动链（bootstrap 走 get_user_data_dir / buffer_load）
+  get_user_data_dir: 'C:\\UserData',
+  buffer_load: null,
+  buffer_save: null,
+  // 最近使用/目录树/菜单勾选（打开文件链路附带调用）
+  recent_add: null,
+  recent_get: [],
+  recent_clear: null,
+  fs_list_tree: null,
+  menu_set_checked: null,
+  menu_set_enabled: null,
+  // 图片自动补全路径（编辑器图片联想）
+  image_auto_path: [],
 }
 
 export function buildMockScript(overrides: MockOverride = {}): string {
@@ -279,4 +320,44 @@ export async function emitTauriEvent(page: Page, event: string, payload?: unknow
   await page.evaluate(({ event, payload }) => {
     return window.__TAURI_INTERNALS__.invoke('plugin:event|emit', { event, payload })
   }, { event, payload })
+}
+
+/**
+ * 在 dev 模式（纯前端无 Rust 后端）下初始化编辑器应用。
+ *
+ * tauri-bridge.doBootstrap() 在 mt::renderer-ready 事件触发后 localEmit('mt::bootstrap-editor')，
+ * 但 editor.ts 的 LISTEN_FOR_BOOTSTRAP_WINDOW() 在 Vue onMounted 的 await 之后才注册 listener，
+ * 时序竞争导致 localEmit 落空，应用不创建初始 tab。
+ *
+ * 此函数通过 emitTauriEvent（走 plugin:event|emit 通道）在 listener 注册后重新触发
+ * bootstrap-editor 事件，确保编辑器初始化。
+ */
+export async function bootstrapApp(page: Page, options: {
+  gotoUrl?: string;
+  waitForMs?: number;
+  markdownList?: string[];
+  sourceCodeModeEnabled?: boolean;
+} = {}): Promise<void> {
+  const url = options.gotoUrl ?? 'http://localhost:1420/'
+  const waitForMs = options.waitForMs ?? 3000
+  const markdownList = options.markdownList ?? []
+  const sourceCodeModeEnabled = options.sourceCodeModeEnabled ?? false
+  // 使用 'domcontentloaded' 而非默认 'load'：vite dev server 冷启动时首次编译
+  // 较慢，'load' 事件（等所有资源）易超时；DOM 就绪即可，后续 waitForTimeout +
+  // waitForSelector 会确保 Vue 应用完成初始化。
+  await page.goto(url, { waitUntil: 'domcontentloaded' })
+  // 等待 Vue onMounted（含 await commandCenterStore.LISTEN_COMMAND_CENTER_BUS()）完成，
+  // 确保 LISTEN_FOR_BOOTSTRAP_WINDOW 的 ipcRenderer.on('mt::bootstrap-editor') 已注册
+  await page.waitForTimeout(waitForMs)
+  await emitTauriEvent(page, 'mt::bootstrap-editor', {
+    addBlankTab: markdownList.length === 0,
+    markdownList,
+    lineEnding: 'lf',
+    sideBarVisibility: true,
+    tabBarVisibility: true,
+    sourceCodeModeEnabled,
+  })
+  // 等待 tab 创建 + 编辑器渲染
+  await page.waitForSelector('.editor-tabs .tabs-container li', { timeout: 10000 })
+  await page.waitForTimeout(500)
 }

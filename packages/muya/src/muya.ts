@@ -5,6 +5,7 @@ import type { Listener } from './event/types';
 import type { ILocale } from './i18n/types';
 import type { IIndexCursor } from './selection/offsetCursor';
 import type { IHistorySelection, IPublicCursorInput } from './selection/types';
+import { SelectionCaretType, SelectionDirection } from './selection/types';
 import type { ITocItem } from './state/getTOC';
 import type { IBulletListState, IOrderListState, ITableState, ITaskListState, TState } from './state/types';
 import type { IMuyaOptions, Nullable } from './types';
@@ -155,6 +156,7 @@ export class Muya {
         this.ui = new Ui(this);
         this.i18n = new I18n(this, this.options.locale);
         this._bindFocusBlurEvents();
+        this._bindRedoShortcut();
     }
 
     private _bindFocusBlurEvents() {
@@ -163,6 +165,24 @@ export class Muya {
         });
         this.eventCenter.attachDOMEvent(this.domNode, 'blur', () => {
             this.eventCenter.emit('blur');
+        });
+    }
+
+    // B07-2 修复：桌面壳的快捷键表只映射了 Ctrl+Shift+Z → 重做；Ctrl+Y 未被
+    // 捕获而穿透到编辑器后，contenteditable 的浏览器原生重做只对文本输入生效，
+    // 对 JS 插入的表格行/列等结构操作无效 —— 表现为「插行后 Ctrl+Y 失效」。
+    // 引擎层接管 Ctrl/Cmd+Y → muya.redo()：结构 op 与文本 op 都走 history
+    // 的 redo 管线（undo 已由宿主桥接，行为不变）；preventDefault 阻止浏览器
+    // 原生重做再叠一层导致状态分叉。
+    private _bindRedoShortcut() {
+        this.eventCenter.attachDOMEvent(this.domNode, 'keydown', (event: Event) => {
+            if (!(event instanceof KeyboardEvent) || event.isComposing)
+                return;
+            const isY = event.key === 'y' || event.key === 'Y';
+            if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && isY) {
+                event.preventDefault();
+                this.redo();
+            }
         });
     }
 
@@ -395,9 +415,34 @@ export class Muya {
             return;
         }
 
-        const sel = selection.getSelection();
-        if (!sel)
-            return;
+        let sel = selection.getSelection();
+
+        // Menu/IPC round-trip blurs the editor; the browser clears
+        // document.getSelection(), so getSelection() returns null even though
+        // the cached endpoints (written by every caret move/click) are still
+        // valid. _selectionInSameLeaf() above already confirmed via the same
+        // cache that we are in a single leaf, so the cache is authoritative
+        // here. Without this fallback the image/link menu items silently
+        // no-op after the editor loses focus (#image-insert).
+        if (!sel) {
+            const cachedAnchorBlock = selection.anchorBlock;
+            const cachedFocusBlock = selection.focusBlock;
+            const cachedAnchor = selection.anchor;
+            const cachedFocus = selection.focus;
+            if (!cachedAnchorBlock || !cachedFocusBlock
+                || !cachedAnchor || !cachedFocus
+                || cachedAnchorBlock !== cachedFocusBlock)
+                return;
+            const path = cachedAnchorBlock.path;
+            sel = {
+                anchor: { offset: cachedAnchor.offset, block: cachedAnchorBlock, path },
+                focus: { offset: cachedFocus.offset, block: cachedFocusBlock, path },
+                isCollapsed: cachedAnchor.offset === cachedFocus.offset,
+                isSelectionInSameBlock: true,
+                direction: SelectionDirection.FORWARD,
+                type: SelectionCaretType.CARET,
+            };
+        }
 
         const { anchor, focus, isSelectionInSameBlock } = sel;
         const anchorBlock = anchor.block;

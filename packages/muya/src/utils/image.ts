@@ -32,6 +32,26 @@ export function getImageInfo(image: HTMLElement): IImageInfo {
 const ABSOLUTE_LOCAL_REG = /^(?:\/|\\\\|[a-z]:\\|[a-z]:\/).+/i;
 
 /**
+ * Convert a local filesystem path to a Tauri asset-protocol URL that the
+ * WebView can load (CSP permits `asset:` / `http://asset.localhost`).
+ * Equivalent to Tauri's `convertFileSrc()` from `@tauri-apps/api` but kept
+ * self-contained so muya does not depend on the Tauri SDK.
+ *
+ * Platform mapping mirrors `@tauri-apps/api/mocks` `mockConvertFileSrc`:
+ *   - Windows: `http://asset.localhost/<encoded-path>`
+ *   - macOS/Linux: `asset://localhost/<encoded-path>`
+ * Backslashes are normalised to `/` before encoding so Windows drive
+ * paths (`C:\Users\...`) don't produce `%5C` sequences.
+ */
+function convertToAssetUrl(filePath: string): string {
+    const normalized = filePath.replace(/\\/g, '/');
+    const encoded = encodeURIComponent(normalized);
+    return isWin
+        ? `http://asset.localhost/${encoded}`
+        : `asset://localhost/${encoded}`;
+}
+
+/**
  * Resolve a relative POSIX path against an absolute base directory, mirroring
  * Node's `path.resolve(base, rel)` for the cases `getImageSrc` cares about.
  * Kept self-contained so the engine does not depend on the desktop host's
@@ -68,6 +88,14 @@ function resolveRelativePath(base: string, relative: string): string {
 }
 
 export function getImageSrc(src: string) {
+    // An already-converted asset URL must not be re-processed
+    // (avoids double-encoding via convertToAssetUrl). Both the macOS/Linux
+    // `asset://localhost/…` and Windows `http://asset.localhost/…` forms
+    // are recognised.
+    if (/^asset:\/\/localhost\//i.test(src) || /^http:\/\/asset\.localhost\//i.test(src)) {
+        return { isUnknownType: false, src };
+    }
+
     const EXT_REG = /\.(?:jpeg|jpg|png|gif|svg|webp)(?=\?|$)/i;
     // http[s] (domain or IPv4 or localhost or IPv6) [port] /not-white-space
     const URL_REG
@@ -95,13 +123,13 @@ export function getImageSrc(src: string) {
         else if (!isAbsoluteLocal && baseUrl) {
             return {
                 isUnknownType: false,
-                src: `file://${resolveRelativePath(baseUrl, src)}`,
+                src: convertToAssetUrl(resolveRelativePath(baseUrl, src)),
             };
         }
         else {
             return {
                 isUnknownType: false,
-                src: `file://${src}`,
+                src: convertToAssetUrl(src),
             };
         }
     }
@@ -190,16 +218,16 @@ export function encodeImageSrc(src: string): string {
 
 export function correctImageSrc(src: string) {
     if (src) {
-    // Fix ASCII and UNC paths on Windows (#1997).
+    // Fix ASCII and UNC paths on Windows (#1997) — use Tauri asset protocol.
         if (isWin && /^(?:[a-z]:\\|[a-z]:\/).+/i.test(src)) {
-            src = `file:///${src.replace(/\\/g, '/')}`;
+            src = convertToAssetUrl(src.replace(/\\/g, '/'));
         }
         else if (isWin && /^\\\\\?\\.+/.test(src)) {
-            src = `file:///${src.substring(4).replace(/\\/g, '/')}`;
+            src = convertToAssetUrl(src.substring(4).replace(/\\/g, '/'));
         }
-        else if (/^\/.+/.test(src)) {
-            // Also adding file protocol on UNIX.
-            // Do nothing: src = src
+        else if (/^\/+/.test(src)) {
+            // POSIX absolute path — also convert to asset protocol.
+            src = convertToAssetUrl(src);
         }
     }
 

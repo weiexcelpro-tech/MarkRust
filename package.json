@@ -1,7 +1,7 @@
 {
   "name": "markrust",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.1.7",
   "type": "module",
   "description": "MarkText rewritten with Tauri 2 + Rust main process, reusing Vue3 renderer and muya engine",
   "scripts": {
@@ -22,6 +22,7 @@
     "@element-plus/icons-vue": "^2.3.2",
     "@floating-ui/dom": "^1.7.6",
     "@intlify/core-base": "^11.4.6",
+    "@marktext/file-icons": "^1.0.6",
     "@popperjs/core": "^2.11.8",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-dialog": "^2.0.1",
@@ -75,6 +76,14 @@
     "vue-i18n": "^11.4.6",
     "vue-router": "^4.6.4",
     "webfontloader": "^1.6.28"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ],
+    "overrides": {
+      "file-icons": "0.0.0"
+    }
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

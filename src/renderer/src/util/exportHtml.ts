@@ -14,6 +14,7 @@ import { MarkdownToHtml } from '@muyajs/core'
 import { sanitize, EXPORT_DOMPURIFY_CONFIG } from './dompurify'
 import { resolveLocalImageSrc } from './resolveImageSrc'
 import { resolveLocalLinkHref } from './resolveLinkHref'
+import { embedImagesAsBase64 } from './embedImage'
 
 export interface HeaderFooterPart {
   type?: number
@@ -33,6 +34,16 @@ export interface ExportStyledHtmlOptions {
   headerFooterStyled?: boolean
   /** Editor text direction ('ltr' | 'rtl' | 'auto'); set on the exported <html>. */
   dir?: string
+  /** v2.0: 当前文件路径，用于 base64 内嵌时解析相对图片路径 */
+  pathname?: string
+  /** v2.0: 是否将本地图片内嵌为 base64 data URI（默认 false，保持 v1.0 行为） */
+  embedImages?: boolean
+  /** v2.0: 图片缩放模式（与 DOCX 共享 F2 逻辑） */
+  imageResizeMode?: 'original' | 'auto'
+  /** v2.0: 自动缩放最大宽度 */
+  imageMaxWidth?: number
+  /** v2.0: 是否在导出的 HTML 左侧添加可折叠目录侧边栏（仅 HTML 导出） */
+  includeTocSidebar?: boolean
 }
 
 // Ported verbatim from legacy muyajs `headerFooterStyle.css` so the page
@@ -69,6 +80,91 @@ table.page-container > tfoot { display: table-header-group; }
 .page-footer.single .footer-content-left,
 .page-footer.single .footer-content-right { display: none; }
 `
+
+// --- TOC Sidebar (v2.0) ---
+// CSS for the collapsible table-of-contents sidebar injected into exported HTML.
+const TOC_SIDEBAR_CSS = `
+.toc-sidebar-layout { display: flex; min-height: 100vh; }
+.toc-sidebar {
+  width: 300px; min-width: 300px; height: 100vh; overflow-y: auto;
+  position: sticky; top: 0; border-right: 1px solid #e0e0e0; background: #f8f9fa;
+  box-sizing: border-box; padding: 50px 0 20px 0;
+  transition: width .3s ease, min-width .3s ease, opacity .3s ease, border-color .3s ease;
+}
+.toc-sidebar.collapsed { width: 0; min-width: 0; opacity: 0; border-right-color: transparent; overflow: hidden; }
+.toc-sidebar-toggle {
+  position: fixed; left: 300px; top: 10px; z-index: 1000;
+  width: 24px; height: 36px; border: 1px solid #d0d0d0; border-left: none;
+  border-radius: 0 6px 6px 0; background: #f8f9fa; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: #666;
+  transition: left .3s ease, background .2s; padding: 0;
+}
+.toc-sidebar-toggle:hover { background: #e8e8e8; color: #333; }
+.toc-sidebar-toggle.collapsed { left: 0; }
+.toc-sidebar-title { font-size: 15px; font-weight: 600; color: #333; padding: 0 20px 10px; border-bottom: 1px solid #e0e0e0; margin-bottom: 8px; }
+.toc-sidebar-nav ul { list-style: none; margin: 0; padding: 0; }
+.toc-sidebar-nav li { margin: 0; }
+.toc-sidebar-nav a {
+  display: block; padding: 4px 8px; color: #555; text-decoration: none;
+  font-size: 13px; line-height: 1.5; border-radius: 4px; margin: 1px 8px;
+  transition: background .15s, color .15s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toc-sidebar-nav a:hover { background: #e8e8e8; color: #333; }
+.toc-sidebar-nav a.active { background: #ddeeff; color: #1a73e8; font-weight: 500; }
+.toc-content { flex: 1; min-width: 0; padding: 20px 40px; }
+.toc-sidebar::-webkit-scrollbar { width: 6px; }
+.toc-sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 3px; }
+.toc-sidebar::-webkit-scrollbar-track { background: transparent; }
+.toc-sidebar:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,.25); }
+@media (prefers-color-scheme: dark) {
+  .toc-sidebar { background: #1e1e1e; border-right-color: #333; }
+  .toc-sidebar-toggle { background: #1e1e1e; border-color: #444; color: #aaa; }
+  .toc-sidebar-toggle:hover { background: #2a2a2a; color: #ddd; }
+  .toc-sidebar-title { color: #ddd; border-bottom-color: #333; }
+  .toc-sidebar-nav a { color: #aaa; }
+  .toc-sidebar-nav a:hover { background: #2a2a2a; color: #ddd; }
+  .toc-sidebar-nav a.active { background: #1a3a5c; color: #6cb6ff; }
+}
+`
+
+// JS for TOC sidebar toggle, click-to-scroll, and scroll-spy active highlighting.
+const TOC_SIDEBAR_JS = `(function(){
+  var sidebar=document.querySelector('.toc-sidebar');
+  var toggle=document.querySelector('.toc-sidebar-toggle');
+  if(!sidebar||!toggle)return;
+  toggle.addEventListener('click',function(){
+    sidebar.classList.toggle('collapsed');
+    toggle.classList.toggle('collapsed');
+  });
+  var links=sidebar.querySelectorAll('a[href^="#"]');
+  var headings=[];
+  links.forEach(function(link){
+    var id=link.getAttribute('href').slice(1);
+    var el=document.getElementById(id);
+    if(el)headings.push({el:el,link:link});
+  });
+  links.forEach(function(link){
+    link.addEventListener('click',function(e){
+      e.preventDefault();
+      var id=this.getAttribute('href').slice(1);
+      var target=document.getElementById(id);
+      if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+  if(headings.length>0){
+    var updateActive=function(){
+      var current=null;
+      for(var i=0;i<headings.length;i++){
+        if(headings[i].el.getBoundingClientRect().top<=60)current=headings[i];
+        else break;
+      }
+      links.forEach(function(l){l.classList.remove('active')});
+      if(current)current.link.classList.add('active');
+    };
+    window.addEventListener('scroll',updateActive,{passive:true});
+    updateActive();
+  }
+})();`
 
 const HF_TABLE_START = '<table class="page-container">'
 const HF_TABLE_END = '</table>'
@@ -153,6 +249,54 @@ const rewriteAnchorHrefs = (html: string): string =>
   })
 
 /**
+ * Extract h1-h6 headings (with their id) from rendered article HTML and build
+ * a nested TOC sidebar `<nav>` structure. Returns '' if no headings are found.
+ */
+const buildTocSidebarHtml = (html: string): string => {
+  const headingReg = /<h([1-6])[^>]*\sid="([^"]*)"[^>]*>([\s\S]*?)<\/h\1>/gi
+  const headings: Array<{ level: number; id: string; text: string }> = []
+  let match: RegExpExecArray | null
+  while ((match = headingReg.exec(html)) !== null) {
+    headings.push({
+      level: parseInt(match[1], 10),
+      id: match[2],
+      text: match[3].replace(/<[^>]*>/g, '').trim()
+    })
+  }
+  if (headings.length === 0) return ''
+  const minLevel = Math.min(...headings.map(h => h.level))
+  let tocHtml = '<nav class="toc-sidebar-nav">\n'
+  tocHtml += '<div class="toc-sidebar-title">\u76EE\u5F55</div>\n'
+  tocHtml += '<ul>\n'
+  for (const h of headings) {
+    const indent = (h.level - minLevel) * 14
+    tocHtml += `  <li style="padding-left:${indent + 8}px"><a href="#${h.id}">${h.text}</a></li>\n`
+  }
+  tocHtml += '</ul>\n</nav>\n'
+  return tocHtml
+}
+
+/**
+ * Wrap the `<body>` content in a flex layout with a TOC sidebar on the left.
+ * Injects sidebar CSS into `<head>` and sidebar JS before `</body>`.
+ */
+const injectTocSidebar = (html: string, tocSidebarHtml: string): string => {
+  const bodyMatch = /<body>([\s\S]*)<\/body>/.exec(html)
+  if (!bodyMatch) return html
+  const bodyContent = bodyMatch[1].trim()
+  const newBody = `<body>
+  <button class="toc-sidebar-toggle" title="Toggle TOC" aria-label="Toggle table of contents">\n    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>\n  </button>
+  <div class="toc-sidebar-layout">
+    <aside class="toc-sidebar">\n${tocSidebarHtml}\n    </aside>
+    <main class="toc-content">\n${bodyContent}\n    </main>
+  </div>
+  <script>${TOC_SIDEBAR_JS}</script>\n</body>`
+  let result = html.replace(/<body>[\s\S]*<\/body>/, newBody)
+  result = result.replace(/<\/head>/, `<style>${TOC_SIDEBAR_CSS}</style>\n</head>`)
+  return result
+}
+
+/**
  * Build a styled, standalone HTML document equivalent to legacy muyajs
  * `exportStyledHTML`. Renders markdown through the new engine, injects the TOC
  * at the `[TOC]` marker, and — when a header/footer is supplied — wraps the
@@ -163,7 +307,19 @@ export const exportStyledHTML = async(
   markdown: string,
   options: ExportStyledHtmlOptions = {}
 ): Promise<string> => {
-  const { title = '', toc = '', header, footer, headerFooterStyled, dir } = options
+  const {
+    title = '',
+    toc = '',
+    header,
+    footer,
+    headerFooterStyled,
+    dir,
+    pathname = '',
+    embedImages = false,
+    imageResizeMode = 'auto',
+    imageMaxWidth = 1024,
+    includeTocSidebar = false
+  } = options
   let { extraCss = '' } = options
 
   // The header/footer page table needs its own stylesheet — fold it into
@@ -220,5 +376,27 @@ export const exportStyledHTML = async(
   }
 
   // Re-emit the engine document shell with the (possibly augmented) body.
-  return fullDoc.replace(/<body>[\s\S]*<\/body>/, `<body>\n  ${bodyHtml}\n</body>`)
+  let result = fullDoc.replace(/<body>[\s\S]*<\/body>/, `<body>\n  ${bodyHtml}\n</body>`)
+
+  // v2.0 F3: 若启用 base64 内嵌，将所有本地图片转为 data URI（PRD AC-16/AC-17）
+  if (embedImages) {
+    const embedResult = await embedImagesAsBase64(result, pathname, {
+      mode: imageResizeMode,
+      maxWidth: imageMaxWidth
+    })
+    result = embedResult.html
+    if (embedResult.failed > 0) {
+      console.warn(`[exportHtml] ${embedResult.failed} 张图片内嵌失败，保留原 src`)
+    }
+  }
+
+  // v2.0: 若启用目录侧边栏，注入侧边栏 HTML/CSS/JS
+  if (includeTocSidebar) {
+    const tocSidebarHtml = buildTocSidebarHtml(result)
+    if (tocSidebarHtml) {
+      result = injectTocSidebar(result, tocSidebarHtml)
+    }
+  }
+
+  return result
 }

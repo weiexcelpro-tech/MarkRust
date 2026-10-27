@@ -68,6 +68,13 @@ export interface IUserPreferences {
   autoNormalizeLineEndings?: boolean
   watcherUsePolling?: boolean
   treePathExcludePatterns?: string[]
+  // v2.0 export preferences
+  exportImageEmbed?: 'embed' | 'reference'
+  exportImageResize?: 'original' | 'auto'
+  exportImageMaxWidth?: number
+  exportShowConfigDialog?: boolean
+  docxPageSize?: 'A4' | 'Letter'
+  docxPageMargin?: 'normal' | 'narrow' | 'wide'
   [key: string]: unknown
 }
 

@@ -279,7 +279,7 @@
     "style": {
       "label": "Stil",
       "overwriteThemeFont": "Design-Schrifteinstellungen überschreiben",
-      "fontFamily": "Schriftfamilie:",
+      "fontFamily": "Schriftfamilie",
       "fontSize": "Schriftgröße",
       "lineHeight": "Zeilenhöhe"
     },
@@ -335,7 +335,8 @@
         "default": "GitHub (Standard)",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "Laden..."
   },
   "recent": {
     "noTabsOpen": "Sie haben keine Tabs geöffnet.",

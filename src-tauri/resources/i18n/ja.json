@@ -279,7 +279,7 @@
     "style": {
       "label": "スタイル",
       "overwriteThemeFont": "テーマフォント設定を上書き",
-      "fontFamily": "フォントファミリー:",
+      "fontFamily": "フォントファミリー",
       "fontSize": "フォントサイズ",
       "lineHeight": "行の高さ"
     },
@@ -335,7 +335,8 @@
         "default": "GitHub (デフォルト)",
         "liber": "リベル"
       }
-    }
+    },
+    "loading": "読み込み中..."
   },
   "recent": {
     "noTabsOpen": "開いているタブがありません。",

@@ -79,6 +79,7 @@
   --sideBarTextColor: rgba(60, 56, 54, 0.5);
   --sideBarBgColor: #f3e6bc;
   --sideBarItemHoverBgColor: rgba(60, 56, 54, 0.05);
+  --sideBarBorderColor: rgba(0, 0, 0, 0.1);
   --itemBgColor: #e2d1a7;
 
   --floatFontColor: rgba(60, 56, 54, 0.8);

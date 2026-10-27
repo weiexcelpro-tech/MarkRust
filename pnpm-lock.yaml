@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  file-icons: 0.0.0
+
 importers:
 
   .:
@@ -17,6 +20,9 @@ importers:
       '@intlify/core-base':
         specifier: ^11.4.6
         version: 11.4.6
+      '@marktext/file-icons':
+        specifier: ^1.0.6
+        version: 1.0.6
       '@popperjs/core':
         specifier: ^2.11.8
         version: 2.11.8
@@ -476,6 +482,9 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@marktext/file-icons@1.0.6':
+    resolution: {integrity: sha512-E9xMmaa4nqSdIjLfZyabIkbNMRPwr+SexzkRqGOWfLkgWiZHNL45JkiLLFBqBqn7ERUxzPgSVFt2MGnetlq2rA==}
 
   '@mermaid-js/parser@1.2.0':
     resolution: {integrity: sha512-oYPyv8A4As1yH5Bx+04iQEQxXuIQDe0GKCNSRgao6z8AM9jixXIfP0vsppRLvGf+nKIOb9/LdpWA4YuJiVvESA==}
@@ -1522,6 +1531,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  file-icons@0.0.0:
+    resolution: {integrity: sha512-uFn59j3n1rKEdZTBD8+x5/Z42Wk7oz8KEctm3ICQnrnZtzlg1oYHzMQuzHVd6qfiHcFp7IT3VHlEo5vSIVTa8g==}
 
   flowchart.js@1.18.0:
     resolution: {integrity: sha512-1rZflSLyrj5/+ryzU+qIQr6IGysPIHT4UrgN+6IaVv7pLDSLu7CvC9e0X7FU6ocpRAEtHk5+UaFXv9NZKRoG3g==}
@@ -2680,6 +2692,10 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
+  '@marktext/file-icons@1.0.6':
+    dependencies:
+      file-icons: 0.0.0
+
   '@mermaid-js/parser@1.2.0':
     dependencies:
       '@chevrotain/types': 11.1.2
@@ -3781,6 +3797,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:
       picomatch: 4.0.4
+
+  file-icons@0.0.0: {}
 
   flowchart.js@1.18.0:
     dependencies:

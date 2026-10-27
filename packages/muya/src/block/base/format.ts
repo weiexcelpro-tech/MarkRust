@@ -474,6 +474,10 @@ class Format extends Content {
         if (!isMouseEvent(event))
             return;
 
+        // When lazyInlineRender is on, the block's inline content may not have
+        // been patched yet. Flush it so getCursor/setCursor operate on real DOM.
+        this.flushLazyPatch();
+
         // Handler click inline math and inline ruby html. Use `Element`, not
         // `HTMLElement` — inline-math KaTeX output is SVG, and a click that
         // lands on an `<svg>` path still has to walk up to the wrapping
@@ -596,7 +600,7 @@ class Format extends Content {
     override inputHandler(event: Event): void {
         // Do not use `isInputEvent` util, because compositionEnd event also
         // invoke this method — `event.inputType` may legitimately be `undefined`
-        // (CompositionEvent doesn't expose it). Use `'inputType' in event` to
+        // (CompositionEvent doesn't expose it). Use `'inputType' in event' to
         // read it from whichever event shape the runtime hands us.
         const inputType = 'inputType' in event && typeof event.inputType === 'string'
             ? event.inputType
@@ -607,6 +611,12 @@ class Format extends Content {
         ) {
             return;
         }
+
+        // When lazyInlineRender is on, the block may not have been patched
+        // yet (e.g. after arrow-key navigation into a lazy block). Flush so
+        // getTextContent/getCursor read the rendered DOM, not the empty
+        // skeleton whose textContent is out of sync with Format.text.
+        this.flushLazyPatch();
 
         const { domNode } = this;
         const { start, end } = this.getCursor()!;

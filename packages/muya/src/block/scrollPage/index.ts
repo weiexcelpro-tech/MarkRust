@@ -191,6 +191,13 @@ export class ScrollPage extends Parent {
             const lastContentBlock = lastChild.lastContentInDescendant()!;
             const { clientY } = event;
             const lastChildDom = lastChild.domNode;
+            // When lazyInlineRender is on, the last block may not have been
+            // patched yet. Flush it so getBoundingClientRect returns the
+            // correct height instead of 0, allowing the "click blank area"
+            // detection to work.
+            if (typeof lastContentBlock.flushLazyPatch === 'function') {
+                lastContentBlock.flushLazyPatch();
+            }
             const { bottom } = lastChildDom!.getBoundingClientRect();
 
             if (clientY > bottom) {

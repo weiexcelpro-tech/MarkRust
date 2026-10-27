@@ -78,8 +78,15 @@ function emptyCellContentsUntil(
 ): void {
     let cellContent = start;
     while (cellContent) {
-        if (cellContent.text !== '')
+        if (cellContent.text !== '') {
             cellContent.text = '';
+            // Setting `.text` only patches the json state — the DOM keeps the
+            // stale cell text unless the block is re-rendered (same as
+            // `TableRectSelection.emptySelectedCells`). Without this the
+            // deleted cell contents stay visible: the "residue" after
+            // deleting a multi-paragraph selection that ends inside a table.
+            cellContent.update();
+        }
 
         if (cellContent === after)
             break;

@@ -22,6 +22,8 @@ import { useLayoutStore } from './layout'
 import { useMainStore } from '.'
 import { t } from '../i18n'
 import { debouncedSendBufferedState, sendBufferedState } from './bufferedState'
+// B09: 单文件 watcher 注册 + 已知 mtime 登记（保存冲突检测用）
+import { watchSingleFile, refreshKnownMtime } from '../util/fileWatch'
 import type {
   IFileState,
   FileNotification,
@@ -86,6 +88,9 @@ interface ExportPayload {
   type: string
   content?: string
   pageOptions?: PageOptions
+  fontFamily?: string
+  fontSize?: number
+  lineHeight?: number
 }
 
 interface AutoSavePayload {
@@ -96,12 +101,108 @@ interface AutoSavePayload {
   options: ReturnType<typeof getOptionsFromState>
 }
 
+// ── B05 文件链接跳转 ──────────────────────────────────────────────────────────
+// 真机三路全静默失败的公共前端段：window.DIRNAME 是随活动标签更新的全局态，
+// 在带参启动/会话恢复等时序下可能为空/过期，Rust 侧拿到空 dirname 时对相对链接
+// 只会拿裸相对串去 shell_open_path（explorer 相对 CWD）→ 静默失败。
+// 因此：① 发送前用当前活动标签 pathname 现算 dirname 兜底；
+//      ② 目标不存在时弹通知而非静默（Rust shell_open_path 对缺失路径无任何反馈）。
+const LINK_TARGET_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
+
+/** 通过既有链路把链接点击交给 Rust（format_link_click 解析相对路径/开标签/开浏览器） */
+function sendFormatLinkClick(
+  data: { href: string | null; [key: string]: unknown },
+  dirname: string
+): void {
+  window.electron.ipcRenderer.send('mt::format-link-click', { data, dirname })
+}
+
+/**
+ * B05：带存在性检查的链接打开。带协议（http/https/ftp/mailto/file 等）的链接
+ * 不做磁盘检查直接放行；文件路径先解码 %xx、按 dirname 解析为绝对路径，
+ * 目标不存在时通知用户（B05⑤：不再静默），存在则走既有 format_link_click 链路。
+ */
+async function openLinkTargetChecked(
+  data: { href: string | null; [key: string]: unknown },
+  dirname: string
+): Promise<void> {
+  const rawHref =
+    typeof data?.href === 'string' && data.href
+      ? data.href
+      : typeof (data as { text?: unknown })?.text === 'string'
+        ? ((data as unknown as { text: string }).text as string)
+        : ''
+  if (!rawHref) {
+    sendFormatLinkClick(data, dirname)
+    return
+  }
+  // 带协议的链接（浏览器打开/file:）不查磁盘，保持原链路行为
+  if (LINK_TARGET_SCHEME_RE.test(rawHref)) {
+    sendFormatLinkClick(data, dirname)
+    return
+  }
+  let decoded = rawHref
+  try {
+    decoded = decodeURIComponent(rawHref)
+  } catch {
+    // 非法百分号编码：保留原串交给 Rust（与原行为一致）
+  }
+  const absolute = window.path.resolve(dirname || '', decoded)
+  let exists: boolean | null = null
+  try {
+    exists = await window.fileUtils.pathExists(absolute)
+  } catch {
+    // fs 检查失败不阻断跳转（保持可用性优先）
+  }
+  if (exists === false) {
+    notice.notify({
+      title: 'Link target not found',
+      message: absolute,
+      type: 'error',
+      time: 10000,
+      showConfirm: false
+    })
+    return
+  }
+  sendFormatLinkClick(data, dirname)
+}
+
+/** B09: 从磁盘读回 markdown（loadChange 兜底重载用）；失败返回 null */
+async function invokeFsReadMarkdown(pathname: string): Promise<null | {
+  markdown: string
+  filename: string
+  encoding: IFileState['encoding']
+  lineEnding: LineEnding | string
+  adjustLineEndingOnSave: boolean
+  trimTrailingNewline: number
+  isMixedLineEndings: boolean
+}> {
+  if (!pathname) return null
+  try {
+    const result = await window.electron.ipcRenderer.invoke('mt::fs::read-markdown', pathname)
+    if (!result || typeof (result as { markdown?: unknown }).markdown !== 'string') return null
+    return result as {
+      markdown: string
+      filename: string
+      encoding: IFileState['encoding']
+      lineEnding: LineEnding | string
+      adjustLineEndingOnSave: boolean
+      trimTrailingNewline: number
+      isMixedLineEndings: boolean
+    }
+  } catch (e) {
+    console.warn('[editor] fs_read_markdown failed:', pathname, e)
+    return null
+  }
+}
+
 interface ContentChangePayload {
   id: string
   markdown: string
   wordCount?: IFileState['wordCount']
   cursor?: unknown
   muyaIndexCursor?: unknown
+  sourceCodeCursor?: unknown
   history?: IFileState['history']
   toc?: TocItem[]
   blocks?: unknown
@@ -205,6 +306,12 @@ export const useEditorStore = defineStore('editor', {
       window.DIRNAME = currentFile?.pathname ? window.path.dirname(currentFile.pathname) : ''
       this.UPDATE_LINE_ENDING_MENU()
 
+      // B09: 会话恢复的每个带路径标签补挂 watcher + mtime 登记
+      // （恢复链不经过 NEW_TAB_WITH_CONTENT，不补挂则外部修改依旧无感知）
+      for (const tab of tabs) {
+        if (tab.pathname) void watchSingleFile(tab.pathname)
+      }
+
       for (const warning of bufferedEditorState.restoreWarnings) {
         const restoredTabId = warning.tabId ? oldIdToNewId[warning.tabId] : null
         const tab = restoredTabId
@@ -301,6 +408,41 @@ export const useEditorStore = defineStore('editor', {
     },
 
     loadChange(change: FileChangePayload): void {
+      // B09: Rust watcher 的 mt::update-file 载荷只带 pathname、不含 data ——
+      // 此处兜底从磁盘重读后再走统一重载流程（原先直接解构 data 会 TypeError 静默中断）
+      if (!change?.data?.markdown) {
+        const pathname = change?.pathname ?? ''
+        void invokeFsReadMarkdown(pathname)
+          .then((result) => {
+            if (!result) {
+              console.error('loadChange: cannot read file from disk:', pathname)
+              return
+            }
+            this.loadChange({
+              pathname,
+              data: {
+                markdown: result.markdown,
+                filename: result.filename,
+                encoding: result.encoding,
+                lineEnding: result.lineEnding,
+                adjustLineEndingOnSave: result.adjustLineEndingOnSave,
+                trimTrailingNewline: result.trimTrailingNewline,
+                isMixedLineEndings: result.isMixedLineEndings
+              }
+            })
+          })
+          .catch((e) => {
+            console.error('loadChange: failed to reload from disk:', pathname, e)
+            notice.notify({
+              title: t('store.editor.errorLoadingTabTitle'),
+              message: t('store.editor.errorLoadingTabMessage'),
+              type: 'error',
+              time: 20000,
+              showConfirm: false
+            })
+          })
+        return
+      }
       const { tabs, currentFile } = this
       const { data, pathname } = change
       const {
@@ -400,6 +542,8 @@ export const useEditorStore = defineStore('editor', {
           isReload: true
         })
       }
+      // B09: 外部重载完成后刷新已知 mtime，后续保存的冲突检测才能以新值为基线
+      void refreshKnownMtime(pathname)
       debouncedSendBufferedState()
     },
 
@@ -428,7 +572,12 @@ export const useEditorStore = defineStore('editor', {
         return
       }
 
-      window.electron.ipcRenderer.send('mt::format-link-click', { data, dirname })
+      // B05：window.DIRNAME 在带参启动/会话恢复等时序下可能为空或过期，
+      // 以当前活动标签的 pathname 现算 dirname 兜底，保证相对链接总能解析出绝对路径。
+      const activePathname = this.currentFile?.pathname || ''
+      const effectiveDirname = dirname || (activePathname ? window.path.dirname(activePathname) : '')
+      // B05⑤：目标不存在时给出通知而非静默（见 openLinkTargetChecked）
+      void openLinkTargetChecked(data, effectiveDirname)
     },
 
     LISTEN_SCREEN_SHOT(): void {
@@ -919,9 +1068,12 @@ export const useEditorStore = defineStore('editor', {
         'mt::open-new-tab',
         (_, markdownDocument, options = {}, selected = true) => {
           if (markdownDocument) {
-            // 需求1: 打开 .md 文件时 sidebar 默认进入 content(toc) tab
+            // Only switch to TOC sidebar if it's not already visible — avoid
+            // redundant SET_LAYOUT calls that trigger IPC + preference writes.
             const layoutStore = useLayoutStore()
-            layoutStore.SET_LAYOUT({ rightColumn: 'toc', showSideBar: true })
+            if (!layoutStore.showSideBar || layoutStore.rightColumn !== 'toc') {
+              layoutStore.SET_LAYOUT({ rightColumn: 'toc', showSideBar: true })
+            }
             // Create tab with content.
             this.NEW_TAB_WITH_CONTENT({ markdownDocument, options, selected })
           } else {
@@ -1283,6 +1435,10 @@ export const useEditorStore = defineStore('editor', {
 
       const { currentFile, tabs } = this
       const { pathname } = markdownDocument
+      // B09: 单文件打开即注册 watcher + 登记 mtime（原先仅「打开文件夹」注册，
+      // 单文件场景外部修改无感知的结构性根因）；拖拽打开/命令行打开/链接跳转/
+      // second-instance 全部汇聚到本函数，此处挂监听即为全量覆盖。
+      if (pathname) void watchSingleFile(pathname)
       const existingTab = tabs.find((t) =>
         window.fileUtils.isSamePathSync(t.pathname, pathname ?? '')
       )
@@ -1383,6 +1539,7 @@ export const useEditorStore = defineStore('editor', {
       wordCount,
       cursor,
       muyaIndexCursor,
+      sourceCodeCursor,
       history,
       toc,
       blocks
@@ -1415,6 +1572,7 @@ export const useEditorStore = defineStore('editor', {
       if (wordCount) tab.wordCount = wordCount
       if (cursor) tab.cursor = cursor
       if (muyaIndexCursor) tab.muyaIndexCursor = muyaIndexCursor
+      if (sourceCodeCursor) tab.sourceCodeCursor = sourceCodeCursor
       if (history) tab.history = history
       if (blocks) tab.blocks = blocks
 
@@ -1535,7 +1693,7 @@ export const useEditorStore = defineStore('editor', {
       )
     },
 
-    EXPORT({ type, content, pageOptions }: ExportPayload): void {
+    EXPORT({ type, content, pageOptions, fontFamily, fontSize, lineHeight }: ExportPayload): void {
       if (this.currentFile === null) return
 
       let title = ''
@@ -1560,7 +1718,10 @@ export const useEditorStore = defineStore('editor', {
         content: content ?? '',
         filename,
         pathname,
-        pageOptions: pageOptions ?? {}
+        pageOptions: pageOptions ?? {},
+        fontFamily,
+        fontSize,
+        lineHeight
       })
     },
 
@@ -1705,9 +1866,16 @@ export const useEditorStore = defineStore('editor', {
           console.error(`LISTEN_FOR_FILE_CHANGE: Cannot find tab for path "${pathname}".`)
         }
       })
+
+      // B09: 保存冲突三选对话框的「重新加载」通道 ——
+      // tauri-bridge 在用户选择重载后从磁盘读回并转发到这里，走 loadChange 统一重载
+      // （isReload 重载保留撤销边界：一次 undo 可回到重载前内容，两侧内容都不丢）
+      window.electron.ipcRenderer.on('mt::reload-file', (_, payload) => {
+        this.loadChange(payload as FileChangePayload)
+      })
     },
 
-    ASK_FOR_IMAGE_PATH(): Promise<string[]> {
+    ASK_FOR_IMAGE_PATH(): Promise<string | null> {
       return window.electron.ipcRenderer.invoke('mt::ask-for-image-path')
     },
 
@@ -2008,6 +2176,7 @@ interface BufferedTabState {
   cursor: unknown
   wordCount: IFileState['wordCount']
   muyaIndexCursor: unknown
+  sourceCodeCursor: unknown
   scrollTop: number
 }
 
@@ -2028,6 +2197,7 @@ const createBufferedTabState = (tab: Partial<IFileState> & { id: string }): Buff
     cursor: toSerializableValue(tab.cursor, defaultFileState.cursor),
     wordCount: toSerializableValue(tab.wordCount, defaultFileState.wordCount),
     muyaIndexCursor: toSerializableValue(tab.muyaIndexCursor, defaultFileState.muyaIndexCursor),
+    sourceCodeCursor: toSerializableValue(tab.sourceCodeCursor, null),
     scrollTop: tab.scrollTop ?? defaultFileState.scrollTop
   }
 }

@@ -141,6 +141,11 @@ export const animatedScrollTo = function(
   duration: number,
   callback?: () => void
 ): void {
+  // 同一元素上开始新动画时作废旧动画：连续触发（如快速连点 TOC）时，
+  // 旧动画的 rAF 会继续写 scrollTop 并与新动画打架，造成落点漂移
+  const token = Symbol('scroll-anim')
+  ;(element as HTMLElement & { __scrollAnimToken?: symbol }).__scrollAnimToken = token
+
   const start = element.scrollTop
   const change = to - start
   const animationStart = +new Date()
@@ -159,6 +164,8 @@ export const animatedScrollTo = function(
   }
 
   const animateScroll = function(): void {
+    const el = element as HTMLElement & { __scrollAnimToken?: symbol }
+    if (el.__scrollAnimToken !== token) return // 已被更新的动画取代
     const now = +new Date()
     const val = Math.floor(easeInOutQuad(now - animationStart, start, change, duration))
 

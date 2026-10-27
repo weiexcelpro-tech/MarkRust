@@ -50,17 +50,16 @@ describe('clipboard.copyHandler — skip empty clipboard writes', () => {
         expect(setData).not.toHaveBeenCalled();
     });
 
-    it('normal copy: writes markdown source to text/plain and blanks text/html', () => {
-        // Track B / D1: a `normal` copy writes ONLY the markdown source to
-        // text/plain and blanks text/html (legacy `copyCutCtrl.copyHandler`),
-        // so an external paste lands as markdown and an internal copy → paste
-        // round-trips through the markdown branch losslessly.
+    it('normal copy: writes rendered html to text/html and markdown source to text/plain', () => {
+        // B03 修复后契约：`normal` copy 把渲染 HTML 写入 text/html（Word 等
+        // 富文本目标保留格式），text/plain 仍为 markdown 源 —— 内部粘贴走
+        // HTML→Markdown 分支，「复制为 Markdown/HTML」不受影响。
         const clipboard = makeClipboard('<p>hi</p>', 'hi');
         const { event, setData } = makeEvent();
 
         clipboard.copyHandler(event);
 
-        expect(setData).toHaveBeenCalledWith('text/html', '');
+        expect(setData).toHaveBeenCalledWith('text/html', '<p>hi</p>');
         expect(setData).toHaveBeenCalledWith('text/plain', 'hi');
     });
 

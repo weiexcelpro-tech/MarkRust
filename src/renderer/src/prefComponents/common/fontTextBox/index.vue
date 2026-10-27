@@ -20,9 +20,17 @@
       :fetch-suggestions="querySearch"
       :placeholder="t('preferences.selectFont')"
       @select="handleSelect"
+      @focus="handleFocus"
     >
       <template #suffix>
+        <Loading
+          v-if="isFontLoading"
+          width="16"
+          height="16"
+          class="el-input__icon is-loading"
+        />
         <ArrowDown
+          v-else
           width="16"
           height="16"
           class="el-input__icon"
@@ -38,8 +46,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ref, watch } from 'vue'
+import { Loading, ArrowDown } from '@element-plus/icons-vue'
 import LinkIcon from '@/components/icons/LinkIcon.vue'
 import { useI18n } from 'vue-i18n'
 import type { PrefControlProps } from '../types'
@@ -60,6 +68,8 @@ const props = withDefaults(defineProps<FontTextBoxProps>(), {
 let defaultValue = props.value
 const fontFamilies = ref<string[]>([])
 const selectValue = ref(props.value)
+const isFontLoading = ref(false)
+let fontLoaded = false
 
 watch(
   () => props.value,
@@ -70,6 +80,22 @@ watch(
     }
   }
 )
+
+const loadFonts = async () => {
+  if (fontLoaded) return
+  isFontLoading.value = true
+  try {
+    const fonts = await window.fonts.list()
+    fontFamilies.value = (fonts || []).map((f) => f.replace(/"/g, '').trim())
+    fontLoaded = true
+  } finally {
+    isFontLoading.value = false
+  }
+}
+
+const handleFocus = () => {
+  loadFonts()
+}
 
 const querySearch = (queryString: string, callback: (items: string[]) => void) => {
   const results =
@@ -93,11 +119,7 @@ const handleMoreClick = () => {
   }
 }
 
-onMounted(async () => {
-  // font-list is a native module; it runs in the main process and is reached via IPC.
-  const fonts = await window.fonts.list()
-  fontFamilies.value = (fonts || []).map((f) => f.replace(/"/g, '').trim())
-})
+// Fonts are loaded lazily on focus, not on mount — avoids tab-switch lag
 </script>
 
 <style>

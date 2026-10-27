@@ -42,47 +42,47 @@ afterEach(() => {
 
 describe('keyboardShortcut — accelerator dispatch', () => {
   it('Ctrl+S → file.save', () => {
-    fireKeydown({ key: 's', ctrlKey: true })
+    fireKeydown({ key: 's', code: 'KeyS', ctrlKey: true })
     expect(handleMenuClickMock).toHaveBeenCalledWith('file.save')
   })
 
   it('Ctrl+B → strongMenuItem (format)', () => {
-    fireKeydown({ key: 'b', ctrlKey: true })
+    fireKeydown({ key: 'b', code: 'KeyB', ctrlKey: true })
     expect(handleMenuClickMock).toHaveBeenCalledWith('strongMenuItem')
   })
 
   it('Ctrl+Shift+P → view.command-palette', () => {
-    fireKeydown({ key: 'p', ctrlKey: true, shiftKey: true })
+    fireKeydown({ key: 'p', code: 'KeyP', ctrlKey: true, shiftKey: true })
     expect(handleMenuClickMock).toHaveBeenCalledWith('view.command-palette')
   })
 
   it('Ctrl+O → file.open-file', () => {
-    fireKeydown({ key: 'o', ctrlKey: true })
+    fireKeydown({ key: 'o', code: 'KeyO', ctrlKey: true })
     expect(handleMenuClickMock).toHaveBeenCalledWith('file.open-file')
   })
 
   it('Ctrl+Shift+S → file.save-as', () => {
-    fireKeydown({ key: 's', ctrlKey: true, shiftKey: true })
+    fireKeydown({ key: 's', code: 'KeyS', ctrlKey: true, shiftKey: true })
     expect(handleMenuClickMock).toHaveBeenCalledWith('file.save-as')
   })
 
   it('Ctrl+` → inlineCodeMenuItem', () => {
-    fireKeydown({ key: '`', ctrlKey: true })
+    fireKeydown({ key: '`', code: 'Backquote', ctrlKey: true })
     expect(handleMenuClickMock).toHaveBeenCalledWith('inlineCodeMenuItem')
   })
 
   it('F3 → edit.find-next (no modifiers)', () => {
-    fireKeydown({ key: 'F3' })
+    fireKeydown({ key: 'F3', code: 'F3' })
     expect(handleMenuClickMock).toHaveBeenCalledWith('edit.find-next')
   })
 
   it('Shift+F3 → edit.find-previous', () => {
-    fireKeydown({ key: 'F3', shiftKey: true })
+    fireKeydown({ key: 'F3', code: 'F3', shiftKey: true })
     expect(handleMenuClickMock).toHaveBeenCalledWith('edit.find-previous')
   })
 
   it('Ctrl+, → file.preferences', () => {
-    fireKeydown({ key: ',', ctrlKey: true })
+    fireKeydown({ key: ',', code: 'Comma', ctrlKey: true })
     expect(handleMenuClickMock).toHaveBeenCalledWith('file.preferences')
   })
 })
@@ -94,29 +94,29 @@ describe('keyboardShortcut — guard clauses', () => {
   })
 
   it('skips modifier-only keydown (Ctrl alone)', () => {
-    fireKeydown({ key: 'Control', ctrlKey: true })
+    fireKeydown({ key: 'Control', code: 'ControlLeft', ctrlKey: true })
     expect(handleMenuClickMock).not.toHaveBeenCalled()
   })
 
   it('skips unknown accelerators (Ctrl+X not in map)', () => {
-    fireKeydown({ key: 'x', ctrlKey: true })
+    fireKeydown({ key: 'x', code: 'KeyX', ctrlKey: true })
     expect(handleMenuClickMock).not.toHaveBeenCalled()
   })
 
   it('does not dispatch for plain letter without modifiers', () => {
-    fireKeydown({ key: 'b' })
+    fireKeydown({ key: 'b', code: 'KeyB' })
     expect(handleMenuClickMock).not.toHaveBeenCalled()
   })
 })
 
 describe('keyboardShortcut — preventDefault on match', () => {
   it('calls preventDefault when shortcut matches', () => {
-    const event = fireKeydown({ key: 's', ctrlKey: true })
+    const event = fireKeydown({ key: 's', code: 'KeyS', ctrlKey: true })
     expect(event.defaultPrevented).toBe(true)
   })
 
   it('does not preventDefault for non-matching key', () => {
-    const event = fireKeydown({ key: 'x', ctrlKey: true })
+    const event = fireKeydown({ key: 'x', code: 'KeyX', ctrlKey: true })
     expect(event.defaultPrevented).toBe(false)
   })
 })
@@ -125,7 +125,7 @@ describe('keyboardShortcut — text input suppression', () => {
   it('suppresses format shortcuts in <input> elements', () => {
     const input = document.createElement('input')
     document.body.appendChild(input)
-    fireKeydown({ key: 'b', ctrlKey: true, target: input })
+    fireKeydown({ key: 'b', code: 'KeyB', ctrlKey: true, target: input })
     expect(handleMenuClickMock).not.toHaveBeenCalled()
     document.body.removeChild(input)
   })
@@ -133,7 +133,7 @@ describe('keyboardShortcut — text input suppression', () => {
   it('allows whitelisted shortcuts in <input> (Ctrl+S)', () => {
     const input = document.createElement('input')
     document.body.appendChild(input)
-    fireKeydown({ key: 's', ctrlKey: true, target: input })
+    fireKeydown({ key: 's', code: 'KeyS', ctrlKey: true, target: input })
     expect(handleMenuClickMock).toHaveBeenCalledWith('file.save')
     document.body.removeChild(input)
   })

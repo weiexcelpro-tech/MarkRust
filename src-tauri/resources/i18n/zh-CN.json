@@ -21,6 +21,7 @@
       "export": "导出",
       "exportHtml": "导出为 HTML",
       "exportPdf": "导出为 PDF",
+      "exportDocx": "导出为 DOCX",
       "import": "导入",
       "print": "打印",
       "closeTab": "关闭标签页",
@@ -277,7 +278,7 @@
     "style": {
       "label": "样式",
       "overwriteThemeFont": "覆盖主题字体设置",
-      "fontFamily": "字体系列：",
+      "fontFamily": "字体系列",
       "fontSize": "字体大小",
       "lineHeight": "行高"
     },
@@ -310,6 +311,8 @@
     "autoNumberingHeadings": "自动编号标题",
     "showFrontMatter": "显示前置元数据",
     "export": "导出…",
+    "htmlIncludeToc": "包含目录侧边栏",
+    "htmlIncludeTocDetail": "在导出的 HTML 左侧添加可折叠的目录侧边栏",
     "options": {
       "pageSizes": {
         "a3": "A3 (297mm x 420mm)",
@@ -335,7 +338,8 @@
         "default": "GitHub (默认)",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "加载中..."
   },
   "recent": {
     "noTabsOpen": "您没有打开的标签页。",
@@ -766,6 +770,7 @@
       "importFile": "导入文件",
       "exportFile": "导出文件",
       "exportFilePdf": "导出为 PDF",
+      "exportFileDocx": "导出为 DOCX",
       "zoom": "缩放",
       "checkUpdate": "检查更新",
       "changeLineEnding": "更改行结束符"

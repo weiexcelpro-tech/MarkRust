@@ -5,6 +5,9 @@ import {
   oneDarkThemes,
   railscastsThemes
 } from '../config'
+
+
+
 import {
   dark,
   graphite,
@@ -43,9 +46,6 @@ import {
 } from './themeColor'
 import { isLinux } from './index'
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ORIGINAL_THEME = '#409EFF'
-
 const patchTheme = (css: string): string => {
   return `@media not print {\n${css}\n}`
 }
@@ -60,6 +60,9 @@ export const addThemeStyle = (theme: string): void => {
   const isCmRailscasts = railscastsThemes.includes(theme)
   const isCmOneDark = oneDarkThemes.includes(theme)
   const isDarkTheme = isCmOneDark || isCmRailscasts
+
+
+
   let themeStyleEle = document.querySelector(`#${THEME_STYLE_ID}`) as HTMLStyleElement | null
   if (!themeStyleEle) {
     themeStyleEle = document.createElement('style')
@@ -181,6 +184,71 @@ export const addThemeStyle = (theme: string): void => {
     document.body.classList.add('dark')
   }
 
+
+
+  // Sync Element Plus CSS variables with the current theme so that EP components
+  // (radio labels, select text, input placeholders, etc.) are readable in dark themes.
+  // Without this, EP uses its own hardcoded --el-text-color-primary (#303133) which
+  // is near-black and invisible on dark backgrounds.
+  const elThemeStyleId = 'el-theme-override'
+  let elStyleEle = document.querySelector(`#${elThemeStyleId}`) as HTMLStyleElement | null
+  if (!elStyleEle) {
+    elStyleEle = document.createElement('style')
+    elStyleEle.id = elThemeStyleId
+    document.head.appendChild(elStyleEle)
+  }
+  if (isDarkTheme) {
+    elStyleEle.innerHTML = `:root,
+:root:root {
+  --el-text-color-primary: var(--editorColor) !important;
+  --el-text-color-regular: var(--editorColor80) !important;
+  --el-text-color-secondary: var(--editorColor60) !important;
+  --el-text-color-placeholder: var(--editorColor40) !important;
+  --el-text-color-disabled: var(--editorColor30) !important;
+  --el-fill-color-blank: transparent !important;
+  --el-fill-color-light: var(--editorColor04) !important;
+  --el-bg-color: transparent !important;
+  --el-bg-color-overlay: var(--editorBgColor) !important;
+  --el-border-color: var(--editorColor10) !important;
+  --el-border-color-light: var(--editorColor10) !important;
+  --el-border-color-lighter: var(--editorColor04) !important;
+  /* Pref label color for dark theme */
+  --prefLabelColor: #f8f9fa !important;
+}
+/* Pref description labels — force readable color in dark theme */
+.pref-container .description span,
+.pref-container .description .notes,
+.pref-container .notes {
+  color: #f8f9fa !important;
+  -webkit-text-fill-color: #f8f9fa !important;
+}
+/* EP internal component text overrides */
+.pref-container .el-radio__label,
+.pref-container .el-select__placeholder,
+.pref-container .el-select__selected-item,
+.pref-container .el-input__inner,
+.pref-container .el-input__wrapper,
+.pref-container .el-checkbox__label,
+.pref-container .el-form-item__label,
+.pref-container .el-radio-group .el-radio {
+  color: var(--editorColor) !important;
+  -webkit-text-fill-color: var(--editorColor) !important;
+}
+/* Select dropdowns also need text color fix */
+.pref-container .el-select-dropdown__item {
+  color: var(--editorColor) !important;
+}
+/* Input placeholders in dark theme */
+.pref-container .el-input__inner::placeholder {
+  color: var(--editorColor40) !important;
+}`
+  } else {
+    // Reset to EP defaults for light themes
+    elStyleEle.innerHTML = ''
+  }
+
+
+
   // change CodeMirror theme
   const cm = document.querySelector('.CodeMirror')
   if (cm) {
@@ -196,6 +264,8 @@ export const addThemeStyle = (theme: string): void => {
     }
   }
 }
+
+
 
 export const setEditorWidth = (value: string): void => {
   const EDITOR_WIDTH_STYLE_ID = 'editor-width'

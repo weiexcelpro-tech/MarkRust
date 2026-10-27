@@ -120,6 +120,12 @@ export class FootnoteTool extends BaseFloat {
         const block = this._footnotes.get(this._identifier);
         if (!block)
             return;
+        // When lazyInlineRender is on, the footnote definition block may not
+        // have been patched yet. Flush it so scrollIntoView scrolls to the
+        // correct position (not a zero-height skeleton).
+        if (typeof block.flushLazyPatch === 'function') {
+            block.flushLazyPatch();
+        }
         block.domNode?.scrollIntoView({ behavior: 'smooth' });
         const content = block.firstContentInDescendant();
         content?.setCursor(0, 0, true);

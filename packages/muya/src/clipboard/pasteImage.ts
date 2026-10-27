@@ -96,7 +96,11 @@ async function insertImageSrc(
     const placeholderText = insertImageText(anchorBlock, src, id);
 
     let finalSrc = src;
-    const resolved = await imageAction({ src, alt: '', title: '' });
+    // Pasted images default to 'base64' per the product requirement so the
+    // pasted bitmap is self-contained in the document (no external file to
+    // lose). The embedder's `imageAction` is expected to convert `src` to a
+    // `data:` URI and return that as `finalSrc`.
+    const resolved = await imageAction({ src, alt: '', title: '', insertMode: 'base64' });
     if (resolved)
         finalSrc = resolved;
 
@@ -293,7 +297,9 @@ async function replaceImageAt(
     const placeholderText = spliceImageText(block, range, src, id);
 
     let finalSrc = src;
-    const resolved = await imageAction({ src, alt: '', title: '' });
+    // Pasted-image replacement defaults to 'base64' for the same reason as
+    // `insertImageSrc` — pasted bitmaps should be embedded, not referenced.
+    const resolved = await imageAction({ src, alt: '', title: '', insertMode: 'base64' });
     if (resolved)
         finalSrc = resolved;
 

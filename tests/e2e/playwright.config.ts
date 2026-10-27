@@ -25,7 +25,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx vite --port 1420',
+    command: '"C:\\Program Files\\nodejs\\npx.cmd" vite --port 1420',
     url: 'http://localhost:1420',
     timeout: 30000,
     reuseExistingServer: true,

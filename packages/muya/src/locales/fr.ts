@@ -88,6 +88,8 @@ export const fr = {
         'Paste web image or local image path. Use': 'Collez une image web ou un chemin local. Changer de mode',
         'simple mode': 'mode simple',
         'full mode': 'mode complet',
+        'Insert as path': 'Insérer en tant que chemin',
+        'Insert as Base64': 'Insérer en Base64',
         // preview block
         'Loading...': 'Chargement...',
         'Invalid Diagram Code': 'Code de diagramme invalide',

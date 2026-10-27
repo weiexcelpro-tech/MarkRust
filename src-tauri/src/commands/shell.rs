@@ -11,7 +11,7 @@ use serde::Deserialize;
 use tauri::Emitter;
 use tauri_plugin_shell::ShellExt;
 
-use crate::commands::fs::fs_read_markdown;
+use crate::commands::fs::fs_read_markdown_inner;
 use crate::error::{AppError, AppResult};
 
 /// 用系统默认浏览器打开 URL。
@@ -201,7 +201,7 @@ pub fn format_link_click(app: tauri::AppHandle, args: FormatLinkClickArgs) -> Ap
 
     if MARKDOWN_EXTENSIONS.contains(&ext.as_str()) && std::path::Path::new(&pathname).is_file() {
         // Open as new tab in the editor
-        let result = fs_read_markdown(pathname, None, None, None, None)?;
+        let result = fs_read_markdown_inner(pathname, None, None, None, None)?;
         let _ = app.emit("mt::open-new-tab", &result);
     } else {
         // Open with system default application

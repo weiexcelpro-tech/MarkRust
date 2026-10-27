@@ -88,6 +88,8 @@ export const zhCN = {
         'Paste web image or local image path. Use': '粘贴网络图片或本地路径。切换模式',
         'simple mode': '简洁模式',
         'full mode': '完整模式',
+        'Insert as path': '以路径插入',
+        'Insert as Base64': '以 Base64 插入',
         // preview block
         'Loading...': '加载中...',
         'Invalid Diagram Code': '图表渲染失败',

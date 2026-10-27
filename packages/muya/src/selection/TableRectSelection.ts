@@ -36,7 +36,7 @@ class TableRectSelection {
     constructor(private _muya: Muya) {}
 
     get hasSelection(): boolean {
-        return this._table != null && this._anchor != null && this._focus != null;
+        return this._isSelecting && this._table != null && this._anchor != null && this._focus != null;
     }
 
     isSingleCellSelected(): boolean {

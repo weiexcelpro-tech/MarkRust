@@ -73,7 +73,6 @@
         </div>
       </template>
     </el-dialog>
-    <editor-search v-if="!sourceCode" />
   </div>
 </template>
 
@@ -113,8 +112,9 @@ import {
   type ILocale
 } from '@muyajs/core'
 import { exportStyledHTML, type HeaderFooterPart } from '@/util/exportHtml'
+// B11: docx 导出前的 mermaid→PNG data URI 预处理
+import { replaceMermaidWithPngImages } from '@/util/mermaidExport'
 import { applyCursor, isIndexCursor } from '@/util/cursor'
-import EditorSearch from '../search/index.vue'
 import bus from '@/bus'
 import { DEFAULT_EDITOR_FONT_FAMILY, DEFAULT_CODE_FONT_FAMILY } from '@/config'
 import notice from '@/services/notification'
@@ -124,6 +124,9 @@ import { SpellChecker } from '@/spellchecker'
 import { isOsx, animatedScrollTo } from '@/util'
 import { moveImageToFolder, uploadImage } from '@/util/fileSystem'
 import { guessClipboardFilePath } from '@/util/clipboard'
+// Tauri 2 IPC: used by `muyaImageAction` to call the `image_to_data_uri`
+// command when the user (or a paste flow) requests Base64 embedding.
+import { invoke } from '@tauri-apps/api/core'
 import { getCssForOptions, getHtmlToc, type PdfCssOptions, type HtmlTocOptions } from '@/util/pdf'
 import { resolveTocHeadingElement } from '@/util/tocNavigation'
 import { addCommonStyle, setEditorWidth } from '@/util/theme'
@@ -831,6 +834,45 @@ const jumpClick = (linkInfo: { href?: string | null } | null) => {
   editorStore.FORMAT_LINK_CLICK({ data: { href: href ?? null }, dirname: window.DIRNAME })
 }
 
+// ── B05④ 对标 Typora：普通单击已渲染链接即跳转 ─────────────────────────────
+// muya linkMouseEvents 对渲染态锚点 preventDefault 后仅放光标（packages/muya 本任务
+// 禁改），但其监听挂在冒泡阶段且不阻断传播——可在 renderer 捕获阶段先行识别点击目标。
+// 选择器与 muya linkMouseEvents 的 LINK_SELECTOR / .mu-html-preview a[href] 对齐。
+const LINK_PLAIN_CLICK_SELECTOR = [
+  'span.mu-inline-rule.mu-link',
+  'a.mu-inline-rule.mu-reference-link',
+  'a.mu-inline-rule.mu-raw-html',
+  'a.mu-inline-rule.mu-auto-link',
+  'a.mu-inline-rule.mu-auto-link-extension',
+  '.mu-html-preview a[href]'
+].join(', ')
+let linkPlainClickHandler: ((event: MouseEvent) => void) | null = null
+const handleLinkPlainClick = (event: MouseEvent): void => {
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
+  // Ctrl/Cmd+Click 仍走 muya format-click 契约（双通道并存，避免双开）
+  const selection = window.getSelection()
+  if (selection && selection.toString().length > 0) return // 拖选结束的 click 不劫持
+  const target = event.target
+  if (!(target instanceof Element)) return
+  const el = target.closest(LINK_PLAIN_CLICK_SELECTOR) as HTMLElement | null
+  if (!el) return
+  // 仅渲染态（预览）的 markdown/引用链接跳转；光标在链接内编辑（[..](..) 源码可见）时不跳
+  if (el.classList.contains('mu-link') || el.classList.contains('mu-reference-link')) {
+    const prev = el.previousElementSibling
+    if (!prev || !prev.classList.contains('mu-hide')) return
+  }
+  // 需是渲染块（data-raw）或 raw-html 预览锚点，避免误伤其它 mu-* 元素
+  if (!el.dataset.raw && !el.closest('.mu-html-preview')) return
+  // href 提取对齐 muya getLinkInfo.readHref：优先 href 属性，其次 snabbdom 写入的 DOM 属性
+  let href = el.getAttribute('href') ?? ''
+  if (!href) {
+    const prop = (el as HTMLElement & { href?: unknown }).href
+    if (typeof prop === 'string') href = prop
+  }
+  if (!href) return
+  editorStore.FORMAT_LINK_CLICK({ data: { href }, dirname: window.DIRNAME })
+}
+
 interface ImagePathSuggestion {
   type: 'directory' | 'file' | string
   file: string
@@ -896,46 +938,31 @@ const imageAction = async (
           type: 'warning',
           message: err as string
         })
-        destImagePath = (await moveImageToFolder(
-          currentPathname,
-          image,
-          resolvedGlobalImageFolderPath
-        )) as string
+        try {
+          destImagePath = (await moveImageToFolder(
+            currentPathname,
+            image,
+            resolvedGlobalImageFolderPath
+          )) as string
+        } catch (moveErr) {
+          notice.notify({
+            title: 'Move Image Failed',
+            type: 'error',
+            message: (moveErr as Error).message || String(moveErr)
+          })
+          return ''
+        }
       }
       break
     }
     case 'folder': {
-      if (isTabSavedOnDisk && imagePreferRelativeDirectory.value) {
-        // `image` may be a path string (paste/drag/image-selector) — pass
-        // `currentPathname` so moveImageToFolder can resolve relative paths
-        // via `path.dirname(pathname)` instead of crashing on `dirname(null)`.
-        destImagePath = (await moveImageToFolder(
-          currentPathname,
-          image,
-          resolvedImageRelativeFullDirectoryPath as string,
-          true,
-          currentPathname
-        )) as string
-      } else {
-        destImagePath = (await moveImageToFolder(
-          currentPathname,
-          image,
-          resolvedGlobalImageFolderPath
-        )) as string
-      }
-      break
-    }
-    case 'path': {
-      if (typeof image === 'string') {
-        // Input is a local path.
-        destImagePath = image
-      } else {
-        // Save and move image to image folder if input is binary.
-
-        // Respect user preferences if tab exists on disk.
+      try {
         if (isTabSavedOnDisk && imagePreferRelativeDirectory.value) {
+          // `image` may be a path string (paste/drag/image-selector) — pass
+          // `currentPathname` so moveImageToFolder can resolve relative paths
+          // via `path.dirname(pathname)` instead of crashing on `dirname(null)`.
           destImagePath = (await moveImageToFolder(
-            null as unknown as string,
+            currentPathname,
             image,
             resolvedImageRelativeFullDirectoryPath as string,
             true,
@@ -947,6 +974,47 @@ const imageAction = async (
             image,
             resolvedGlobalImageFolderPath
           )) as string
+        }
+      } catch (folderErr) {
+        notice.notify({
+          title: 'Insert Image Failed',
+          type: 'error',
+          message: (folderErr as Error).message || String(folderErr)
+        })
+        return ''
+      }
+      break
+    }
+    case 'path': {
+      if (typeof image === 'string') {
+        // Input is a local path.
+        destImagePath = image
+      } else {
+        // Save and move image to image folder if input is binary.
+        try {
+          // Respect user preferences if tab exists on disk.
+          if (isTabSavedOnDisk && imagePreferRelativeDirectory.value) {
+            destImagePath = (await moveImageToFolder(
+              null as unknown as string,
+              image,
+              resolvedImageRelativeFullDirectoryPath as string,
+              true,
+              currentPathname
+            )) as string
+          } else {
+            destImagePath = (await moveImageToFolder(
+              currentPathname,
+              image,
+              resolvedGlobalImageFolderPath
+            )) as string
+          }
+        } catch (pathErr) {
+          notice.notify({
+            title: 'Insert Image Failed',
+            type: 'error',
+            message: (pathErr as Error).message || String(pathErr)
+          })
+          return ''
         }
       }
       break
@@ -963,12 +1031,62 @@ const imageAction = async (
   return destImagePath
 }
 
-// Adapt the engine's `imageAction` contract (`{ src, alt, title }`) to the
-// desktop's `imageAction(image, id, alt)`. The engine handles a single inline
-// image edit (no `id` round-trip / source-mode bus event), so we pass `null`
-// for `id`.
-const muyaImageAction = (state: { src: string; alt?: string; title?: string }): Promise<string> =>
-  imageAction(state.src, null, state.alt ?? '')
+// Adapt the engine's `imageAction` contract (`{ src, alt, title, insertMode }`)
+// to the desktop's `imageAction(image, id, alt)` flow, with optional base64
+// embedding.
+//
+// - `insertMode === 'base64'`: hand the src to the Tauri `image_to_data_uri`
+//   command, which reads the local file (or decodes a `data:` URL / downloads
+//   an http URL), optionally resizes, and returns a base64 `data:` URI that
+//   gets written straight into the markdown source. Used for pasted images
+//   (per product requirement) and when the user picks "Insert as Base64" in
+//   the image-edit tool.
+// - `insertMode === 'path'` (default / undefined): run the existing
+//   upload/folder/path pipeline based on the `imageInsertAction` preference.
+const muyaImageAction = async (
+  state: { src: string; alt?: string; title?: string; insertMode?: 'path' | 'base64' }
+): Promise<string> => {
+  if (state.insertMode === 'base64') {
+    const currentPathname = currentFile.value?.pathname ?? ''
+    const baseDir = currentPathname
+      ? (window as unknown as { path?: { dirname: (p: string) => string } })
+          .path?.dirname(currentPathname) ?? ''
+      : ''
+    try {
+      const result = await invoke<{
+        originalSrc: string
+        dataUri: string | null
+        originalWidth: number | null
+        resizedWidth: number | null
+        originalSize: number | null
+        finalSize: number | null
+        error: string | null
+      }>('image_to_data_uri', {
+        src: state.src,
+        baseDir,
+        resize: null
+      })
+      if (result?.dataUri) {
+        return result.dataUri
+      }
+      const errMsg = result?.error ?? 'unknown error'
+      notice.notify({
+        title: 'Embed Image Failed',
+        type: 'error',
+        message: `Failed to convert image to Base64: ${errMsg}`
+      })
+      return ''
+    } catch (err) {
+      notice.notify({
+        title: 'Embed Image Failed',
+        type: 'error',
+        message: (err as Error)?.message || String(err)
+      })
+      return ''
+    }
+  }
+  return imageAction(state.src, null, state.alt ?? '')
+}
 
 const imagePathPicker = () => {
   return editorStore.ASK_FOR_IMAGE_PATH()
@@ -1124,12 +1242,16 @@ const toSearchMatches = (result: unknown) => {
 }
 
 const handleSearch = (payload: unknown) => {
+  if (sourceCode.value) return // sourceCode.vue handles search in source-code mode
+  if (!editor.value) return
   const { value, opt } = payload as { value: string; opt: unknown }
   editorStore.SEARCH(toSearchMatches(editor.value.search(value, opt)))
   scrollToHighlight()
 }
 
 const handReplace = (payload: unknown) => {
+  if (sourceCode.value) return // sourceCode.vue handles replace in source-code mode
+  if (!editor.value) return
   const { value, opt } = payload as { value: string; opt: unknown }
   editorStore.SEARCH(toSearchMatches(editor.value.replace(value, opt)))
 }
@@ -1201,11 +1323,124 @@ const scrollToCords = (y: number) => {
 // Smoothly scroll the editor so `anchor` sits at the standard top offset.
 // Shared by the TOC, search-highlight, and any other "reveal this element"
 // caller so the getBoundingClientRect + animatedScrollTo math lives once.
+//
+// When lazyInlineRender is active, the target block's inline content may not
+// have been patched yet (its DOM is empty/skeleton), so getBoundingClientRect
+// returns an inaccurate position. Flush the block's lazy patch first so the
+// layout is correct before we measure and scroll.
+const flushBlockForElement = (el: Element) => {
+  // Walk up from the element to find the nearest Muya block DOM node
+  // (which has the __MUYA_BLOCK__ property stamped by TreeNode.createDomNode).
+  let node: Element | null = el
+  while (node) {
+    const block = (node as any).__MUYA_BLOCK__
+    if (block && typeof block.flushLazyPatch === 'function') {
+      block.flushLazyPatch()
+      break
+    }
+    node = node.parentElement
+  }
+}
+
+// Flush all unpatched blocks in the container from the top down to the target
+// element. When lazyInlineRender is on, blocks above the viewport remain
+// unpatched (their DOM is empty, height ~0). If only the target block is
+// flushed, its getBoundingClientRect still reports the wrong position because
+// the cumulative height gap from all unpatched blocks above it hasn't been
+// corrected. Walking top-down through .mu-container children ensures every
+// block preceding the target is fully rendered before we measure position.
+const flushAllBlocksToElement = (container: Element, target: Element) => {
+  const muContainer = container.querySelector('.mu-container')
+  if (!muContainer) return
+  for (const child of muContainer.children) {
+    if (child === target || child.contains(target)) {
+      // We've reached (or contain) the target — flush it and stop.
+      const block = (child as any).__MUYA_BLOCK__
+      if (block && typeof block.flushLazyPatch === 'function') {
+        block.flushLazyPatch()
+      }
+      break
+    }
+    // Flush every block before the target so their layout height is correct.
+    const block = (child as any).__MUYA_BLOCK__
+    if (block && typeof block.flushLazyPatch === 'function') {
+      block.flushLazyPatch()
+    }
+  }
+}
+
 const scrollElementIntoView = (anchor: Element | null | undefined, duration = 300) => {
   const container = getScrollContainer()
   if (!container || !anchor) return
+  // Ensure the block's inline content is rendered before measuring position.
+  flushBlockForElement(anchor)
   const { y } = anchor.getBoundingClientRect()
-  animatedScrollTo(container, container.scrollTop + y - STANDAR_Y, duration)
+  animatedScrollTo(container, container.scrollTop + y - STANDAR_Y, duration, () => {
+    // 落位校准：动画期间/刚落位后布局仍可能变化（图片异步加载、迟到重排），
+    // 动画结束时实测锚点与设计位置的残差并瞬时校正。与 TOC 的 snapHeaderToTop
+    // 同一套模式。连续触发时 animatedScrollTo 的令牌会取代旧动画，旧校准失效。
+    const snap = () => {
+      if (!anchor.isConnected || !container.isConnected) return
+      const drift = anchor.getBoundingClientRect().top - container.getBoundingClientRect().top - STANDAR_Y
+      if (Math.abs(drift) > 1) {
+        const max = container.scrollHeight - container.clientHeight
+        container.scrollTop = Math.max(0, Math.min(container.scrollTop + drift, max))
+      }
+    }
+    snap()
+    window.setTimeout(snap, 450)
+  })
+}
+
+// ── TOC 跳转：顶对齐（与源码模式一致）──
+// 此前 TOC 复用 scrollElementIntoView：章节名落在视口顶下 320px（上游"屏幕中部"
+// 设计），且落点受图片异步加载影响忽上忽下。改为顶对齐 + 落点校准。
+
+/** 章节名与编辑区顶边的呼吸空隙（px）。 */
+const HEADER_TOP_PAD = 16
+
+/** 把章节名吸回顶对齐位置（校准动画期间/图片加载后的布局漂移）。 */
+const snapHeaderToTop = (container: HTMLElement, headingEl: Element) => {
+  if (!container.isConnected || !headingEl.isConnected) return
+  const drift =
+    headingEl.getBoundingClientRect().top - container.getBoundingClientRect().top - HEADER_TOP_PAD
+  if (Math.abs(drift) > 1) {
+    const max = container.scrollHeight - container.clientHeight
+    container.scrollTop = Math.max(0, Math.min(container.scrollTop + drift, max))
+  }
+}
+
+const scrollHeaderToTop = (headingEl: Element) => {
+  const container = getScrollContainer() as HTMLElement | null
+  if (!container || !headingEl) return
+  // 懒渲染块先全部补齐再测量：未渲染块高度为 0，会把目标位置越测越偏
+  flushAllBlocksToElement(container, headingEl)
+  // 用容器相对坐标换算内容坐标，落点与当前滚动位置、进行中的动画无关
+  const offsetInContainer =
+    headingEl.getBoundingClientRect().top - container.getBoundingClientRect().top
+  const max = container.scrollHeight - container.clientHeight
+  const target = Math.max(0, Math.min(container.scrollTop + offsetInContainer - HEADER_TOP_PAD, max))
+  animatedScrollTo(container, target, 300, () => {
+    // 动画结束后立即校准一次
+    snapHeaderToTop(container, headingEl)
+    // 目标题上方的图片加载完成会把布局撑动——宽限期内持续吸回顶对齐，
+    // 消除"有时靠上有时靠下"的漂移
+    const pendingImgs = Array.from(container.querySelectorAll('img')).filter(
+      (img) =>
+        !img.complete &&
+        img.compareDocumentPosition(headingEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    if (pendingImgs.length === 0) return
+    const deadline = Date.now() + 2500
+    const iv = setInterval(() => {
+      snapHeaderToTop(container, headingEl)
+      const allLoaded = pendingImgs.every((img) => img.complete)
+      if (allLoaded || Date.now() > deadline || !container.isConnected) {
+        clearInterval(iv)
+        snapHeaderToTop(container, headingEl)
+      }
+    }, 250)
+  })
 }
 
 const scrollToHighlight = () => {
@@ -1213,15 +1448,17 @@ const scrollToHighlight = () => {
 }
 
 /**
- * Scrolls the editor to the heading for a TOC entry. See
- * `resolveTocHeadingElement` for why the slug is resolved by document order
- * against the top-level headings only.
+ * Scrolls the editor to the heading for a TOC entry, top-aligned like source
+ * mode. See `resolveTocHeadingElement` for why the slug is resolved by
+ * document order against the top-level headings only.
  * @param slug The TOC entry's slug from the `scroll-to-header` bus event.
  */
 const scrollToHeader = (slug: unknown) => {
   const container = getScrollContainer()
   if (!container) return
-  scrollElementIntoView(resolveTocHeadingElement(container, editorStore.listToc, slug))
+  const headingEl = resolveTocHeadingElement(container, editorStore.listToc, slug)
+  if (!headingEl) return
+  scrollHeaderToTop(headingEl)
 }
 
 // Scrolls to a non-heading in-document anchor target (e.g. a custom
@@ -1231,11 +1468,21 @@ const scrollToAnchorElement = (element: unknown) => {
 }
 
 const scrollToElement = (selector: string) => {
-  // Scroll to search highlight word
-  scrollElementIntoView(document.querySelector(selector))
+  // Scroll to search highlight word. Use flushAllBlocksToElement (not just
+  // flushBlockForElement) so that every unpatched block *above* the highlight
+  // is also flushed first — otherwise their zero-height skeletons cause the
+  // target's getBoundingClientRect to report the wrong position.
+  const container = getScrollContainer()
+  const anchor = document.querySelector(selector)
+  if (container && anchor) {
+    flushAllBlocksToElement(container, anchor)
+  }
+  scrollElementIntoView(anchor)
 }
 
 const handleFindAction = (action: unknown) => {
+  if (sourceCode.value) return // sourceCode.vue handles find-action in source-code mode
+  if (!editor.value) return
   editorStore.SEARCH(toSearchMatches(editor.value.find(action)))
   scrollToHighlight()
 }
@@ -1257,7 +1504,7 @@ const handleExport = async (options: unknown) => {
   const opts = options as ExportOptions
   const { type, headerFooterStyled, htmlTitle } = opts
 
-  if (!/^pdf|print|styledHtml$/.test(type)) {
+  if (!/^pdf|print|styledHtml|html|docx$/.test(type)) {
     throw new Error(`Invalid type to export: "${type}".`)
   }
 
@@ -1268,20 +1515,92 @@ const handleExport = async (options: unknown) => {
   const footer = (opts.footer ?? null) as HeaderFooterPart | null
 
   switch (type) {
+    case 'docx': {
+      // DOCX 导出：不走 muya HTML 渲染，直接传 Markdown 给 Rust 后端
+      // Rust 侧 export_docx 用 pulldown-cmark 解析 + docx-rs 生成 + 内嵌图片
+      // 字体设置：当用户在导出弹窗勾选"覆盖字体"时，opts 中会携带 fontFamily/fontSize/lineHeight
+      try {
+        const filename = (htmlTitle || '')
+        // B11: docx 导出前把 ```mermaid 源码块替换为 PNG data URI 图片（与 Rust 契约），
+        // 否则 Rust 侧无渲染路径，docx 内会是 Consolas 源码文本。
+        // v2 独立渲染器：直接 mermaid.render（无 muya 懒加载竞态）；失败块保留源码并显式提示。
+        const { markdown: exportMarkdown, failed: mermaidFailed } =
+          await replaceMermaidWithPngImages(markdown)
+        if (mermaidFailed > 0) {
+          notice.notify({
+            title: 'Mermaid',
+            type: 'warning',
+            message: `${mermaidFailed} 个 mermaid 块渲染失败，导出文档中将保留其源码文本`
+          })
+        }
+        editorStore.EXPORT({
+          type,
+          content: exportMarkdown,
+          filename,
+          pathname: props.pathname || '',
+          fontFamily: (opts.fontFamily as string | undefined) ?? undefined,
+          fontSize: (opts.fontSize as number | undefined) ?? undefined,
+          lineHeight: (opts.lineHeight as number | undefined) ?? undefined
+        })
+      } catch (err) {
+        log.error('Failed to export DOCX:', err)
+        notice.notify({
+          title: t('editor.export.failed', { type: 'DOCX' }),
+          type: 'error',
+          message:
+            (err as { message?: string } | null | undefined)?.message ?? t('editor.export.error')
+        })
+      }
+      break
+    }
     case 'styledHtml': {
       try {
+        // v2.0 F3：从偏好读取是否 base64 内嵌（默认 embed）
+        const shouldEmbed = preferencesStore.exportImageEmbed === 'embed'
         const content = await exportStyledHTML(editor.value, markdown, {
           title: htmlTitle || '',
           printOptimization: false,
           extraCss,
           toc: htmlToc,
-          dir: props.textDirection
+          dir: props.textDirection,
+          pathname: props.pathname || '',
+          embedImages: shouldEmbed,
+          imageResizeMode: preferencesStore.exportImageResize,
+          imageMaxWidth: preferencesStore.exportImageMaxWidth
         })
         editorStore.EXPORT({ type, content })
       } catch (err) {
         log.error('Failed to export document:', err)
         notice.notify({
           title: t('editor.export.failed', { type: htmlTitle || 'html' }),
+          type: 'error',
+          message:
+            (err as { message?: string } | null | undefined)?.message ?? t('editor.export.error')
+        })
+      }
+      break
+    }
+    case 'html': {
+      try {
+        // v2.0: 独立 HTML 导出 — 强制自包含（base64 嵌图），产出单文件可移植 HTML
+        // 与 styledHtml 区别：强制 embedImages=true，不依赖偏好设置，确保任意浏览器直接打开
+        const content = await exportStyledHTML(editor.value, markdown, {
+          title: htmlTitle || '',
+          printOptimization: false,
+          extraCss,
+          toc: htmlToc,
+          dir: props.textDirection,
+          pathname: props.pathname || '',
+          embedImages: true,
+          imageResizeMode: preferencesStore.exportImageResize,
+          imageMaxWidth: preferencesStore.exportImageMaxWidth,
+          includeTocSidebar: opts.htmlIncludeTocSidebar === true
+        })
+        editorStore.EXPORT({ type, content, filename: htmlTitle || '', pathname: props.pathname || '' })
+      } catch (err) {
+        log.error('Failed to export HTML:', err)
+        notice.notify({
+          title: t('editor.export.failed', { type: 'HTML' }),
           type: 'error',
           message:
             (err as { message?: string } | null | undefined)?.message ?? t('editor.export.error')
@@ -1300,6 +1619,8 @@ const handleExport = async (options: unknown) => {
           isLandscape
         }
 
+        // v2.0 F3：PDF 打印同样应用 base64 内嵌（保证打印渲染不依赖外部文件）
+        const shouldEmbed = preferencesStore.exportImageEmbed === 'embed'
         const html = await exportStyledHTML(editor.value, markdown, {
           title: '',
           printOptimization: true,
@@ -1308,9 +1629,14 @@ const handleExport = async (options: unknown) => {
           header,
           footer,
           headerFooterStyled: headerFooterStyled as boolean | undefined,
-          dir: props.textDirection
+          dir: props.textDirection,
+          pathname: props.pathname || '',
+          embedImages: shouldEmbed,
+          imageResizeMode: preferencesStore.exportImageResize,
+          imageMaxWidth: preferencesStore.exportImageMaxWidth
         })
-        printer!.renderMarkdown(html, true)
+        // 注意：base64 内嵌已在 exportStyledHTML 中完成，此处 renderMarkdown 不再重复
+        await printer!.renderMarkdown(html, true)
         editorStore.EXPORT({ type, pageOptions })
       } catch (err) {
         log.error('Failed to export document:', err)
@@ -1326,6 +1652,8 @@ const handleExport = async (options: unknown) => {
     case 'print': {
       // NOTE: Print doesn't support page size or orientation.
       try {
+        // v2.0 F3：打印同样应用 base64 内嵌
+        const shouldEmbed = preferencesStore.exportImageEmbed === 'embed'
         const html = await exportStyledHTML(editor.value, markdown, {
           title: '',
           printOptimization: true,
@@ -1334,9 +1662,13 @@ const handleExport = async (options: unknown) => {
           header,
           footer,
           headerFooterStyled: headerFooterStyled as boolean | undefined,
-          dir: props.textDirection
+          dir: props.textDirection,
+          pathname: props.pathname || '',
+          embedImages: shouldEmbed,
+          imageResizeMode: preferencesStore.exportImageResize,
+          imageMaxWidth: preferencesStore.exportImageMaxWidth
         })
-        printer!.renderMarkdown(html, true)
+        await printer!.renderMarkdown(html, true)
         editorStore.PRINT_RESPONSE()
       } catch (err) {
         log.error('Failed to export document:', err)
@@ -2089,6 +2421,10 @@ onMounted(() => {
     }
   )
 
+  // B05④：普通单击渲染态链接即跳转（捕获阶段先于 muya 的冒泡光标处理，不阻断其执行）
+  linkPlainClickHandler = handleLinkPlainClick
+  container.addEventListener('click', linkPlainClickHandler, true)
+
   editor.value.on('preview-image', ({ data }: { data: string }) => {
     if (imageViewer) {
       imageViewer.destroy()
@@ -2183,6 +2519,13 @@ onBeforeUnmount(() => {
     container?.removeEventListener('scroll', scrollHandler)
   }
   scrollHandler = null
+
+  // B05④：摘除普通单击跳转的捕获监听
+  if (linkPlainClickHandler) {
+    const container = getScrollContainer()
+    container?.removeEventListener('click', linkPlainClickHandler, true)
+    linkPlainClickHandler = null
+  }
 
   resizeObserverForEditor.disconnect()
 

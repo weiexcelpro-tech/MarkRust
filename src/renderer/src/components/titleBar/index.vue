@@ -19,7 +19,7 @@
         class="title"
         @dblclick.stop="toggleMaxmizeOnMacOS"
       >
-        <span v-if="!filename">MarkText</span>
+        <span v-if="!filename">MarkRust</span>
         <span v-else>
           <span
             v-for="(path, index) of paths"
@@ -85,52 +85,7 @@
         class="right-toolbar"
         :class="[{ 'title-no-drag': titleBarStyle === 'custom' }]"
       >
-        <div
-          class="frameless-titlebar-button frameless-titlebar-close"
-          @click.stop="handleCloseClick"
-        >
-          <div>
-            <svg
-              width="10"
-              height="10"
-            >
-              <path :d="windowIconClose" />
-            </svg>
-          </div>
-        </div>
-        <div
-          class="frameless-titlebar-button frameless-titlebar-toggle"
-          @click.stop="handleMaximizeClick"
-        >
-          <div>
-            <svg
-              width="10"
-              height="10"
-            >
-              <path
-                v-show="!isMaximized"
-                :d="windowIconMaximize"
-              />
-              <path
-                v-show="isMaximized"
-                :d="windowIconRestore"
-              />
-            </svg>
-          </div>
-        </div>
-        <div
-          class="frameless-titlebar-button frameless-titlebar-minimize"
-          @click.stop="handleMinimizeClick"
-        >
-          <div>
-            <svg
-              width="10"
-              height="10"
-            >
-              <path :d="windowIconMinimize" />
-            </svg>
-          </div>
-        </div>
+        <!-- Window control buttons removed: use native system title bar buttons instead -->
       </div>
     </div>
   </div>

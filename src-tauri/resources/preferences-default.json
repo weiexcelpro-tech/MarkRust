@@ -1,7 +1,7 @@
 {
   "autoSave": false,
   "autoSaveDelay": 5000,
-  "titleBarStyle": "custom",
+  "titleBarStyle": "native",
   "openFilesInNewWindow": false,
   "openFolderInNewWindow": false,
   "zoom": 1.0,
@@ -78,5 +78,12 @@
   "searchNoIgnore": false,
   "searchFollowSymlinks": true,
 
-  "watcherUsePolling": false
+  "watcherUsePolling": false,
+
+  "exportImageEmbed": "embed",
+  "exportImageResize": "auto",
+  "exportImageMaxWidth": 1024,
+  "exportShowConfigDialog": true,
+  "docxPageSize": "A4",
+  "docxPageMargin": "normal"
 }

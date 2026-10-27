@@ -13,7 +13,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(),
+  // listen() must return a Promise<UnlistenFn> — tauri-bridge chains .catch()
+  // on some listen() calls, so a bare vi.fn() (→ undefined) explodes on import.
+  listen: vi.fn(() => Promise.resolve(() => {})),
   emit: vi.fn(),
 }))
 

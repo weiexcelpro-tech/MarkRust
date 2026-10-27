@@ -172,6 +172,9 @@ fn build_file_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::men
     // 构建 "Open Recent" 子菜单
     let open_recent_submenu = build_open_recent_menu(app, locale)?;
 
+    // 构建 "Export" 子菜单（PDF / DOCX / HTML）
+    let export_submenu = build_export_menu(app, locale)?;
+
     let submenu = SubmenuBuilder::new(app, t("menu.file.file", locale))
         .item(&text_item(app, "file.new-window", t("menu.file.newWindow", locale), "Ctrl+N")?)
         .item(&text_item(app, "file.new-tab", t("menu.file.newTab", locale), "Ctrl+T")?)
@@ -185,12 +188,7 @@ fn build_file_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::men
         .item(&text_item(app, "file.save", t("menu.file.save", locale), "Ctrl+S")?)
         .item(&text_item(app, "file.save-as", t("menu.file.saveAs", locale), "Ctrl+Shift+S")?)
         .separator()
-        .item(&text_item(
-            app,
-            "file.export-file-pdf",
-            t("menu.file.exportPdf", locale),
-            "Ctrl+Alt+E",
-        )?)
+        .item(&export_submenu)
         .item(&text_item(app, "file.print", t("menu.file.print", locale), "Ctrl+P")?)
         .separator()
         .item(&text_item(app, "file.preferences", t("menu.file.preferences", locale), "Ctrl+,")?)
@@ -247,6 +245,33 @@ fn build_open_recent_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tau
     Ok(submenu)
 }
 
+/// 构建 "Export" 子菜单（PDF / DOCX / HTML）。
+/// ID 用连字符格式，与 commands/index.ts、menuBridge findCommand 匹配。
+fn build_export_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::menu::Submenu<tauri::Wry>> {
+    let submenu = SubmenuBuilder::new(app, t("menu.file.export", locale))
+        .item(&text_item(
+            app,
+            "file.export-file-pdf",
+            t("menu.file.exportPdf", locale),
+            "Ctrl+Alt+E",
+        )?)
+        .item(&text_item(
+            app,
+            "file.export-file-docx",
+            t("menu.file.exportDocx", locale),
+            "Ctrl+Alt+Shift+E",
+        )?)
+        .item(&text_item(
+            app,
+            "file.export-file-html",
+            t("menu.file.exportHtml", locale),
+            "",
+        )?)
+        .build()
+        .map_err(map_err)?;
+    Ok(submenu)
+}
+
 /// Edit 菜单：cut/copy/paste/select_all 用 PredefinedMenuItem（原生处理），
 /// undo/redo 因 Windows 上 PredefinedMenuItem 为 no-op，改用自定义 MenuItem 走事件路由。
 /// Find/Replace/Duplicate 等为自定义项走事件路由。参考 marktext-develop/templates/edit.ts。
@@ -300,7 +325,7 @@ fn build_edit_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri::men
             t("menu.edit.findPrevious", locale),
             "Shift+F3",
         )?)
-        .item(&text_item(app, "edit.replace", t("menu.edit.replace", locale), "Ctrl+R")?)
+        .item(&text_item(app, "edit.replace", t("menu.edit.replace", locale), "Ctrl+H")?)
         .separator()
         .item(&text_item(
             app,
@@ -458,7 +483,7 @@ fn build_paragraph_menu(app: &tauri::AppHandle, locale: &str) -> AppResult<tauri
         )?)
         .separator()
         .item(&text_item(app, "paragraph.order-list", t("menu.paragraph.orderedList", locale), "Ctrl+G")?)
-        .item(&text_item(app, "paragraph.bullet-list", t("menu.paragraph.bulletList", locale), "Ctrl+H")?)
+        .item(&text_item(app, "paragraph.bullet-list", t("menu.paragraph.bulletList", locale), "")?)
         .item(&text_item(app, "paragraph.task-list", t("menu.paragraph.taskList", locale), "Ctrl+Alt+X")?)
         .item(&text_item(
             app,

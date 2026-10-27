@@ -15,8 +15,10 @@
         v-if="sourceCode"
         :markdown="markdown"
         :muya-index-cursor="muyaIndexCursor"
+        :source-code-cursor="sourceCodeCursor"
         :text-direction="textDirection"
       />
+      <editor-search />
     </div>
     <tab-notifications />
   </div>
@@ -28,6 +30,7 @@ import { storeToRefs } from 'pinia'
 import Tabs from './tabs.vue'
 import Editor from './editor.vue'
 import SourceCode from './sourceCode.vue'
+import EditorSearch from '../search/index.vue'
 import TabNotifications from './notifications.vue'
 
 defineProps<{
@@ -37,6 +40,7 @@ defineProps<{
   // caller to widen.
   cursor: unknown
   muyaIndexCursor?: unknown
+  sourceCodeCursor?: unknown
   sourceCode: boolean
   showTabBar: boolean
   textDirection: string

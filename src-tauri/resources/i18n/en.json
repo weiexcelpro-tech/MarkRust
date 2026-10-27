@@ -21,6 +21,7 @@
       "export": "Export",
       "exportHtml": "Export as HTML",
       "exportPdf": "Export as PDF",
+      "exportDocx": "Export as DOCX",
       "import": "Import",
       "print": "Print",
       "closeTab": "Close Tab",
@@ -279,7 +280,7 @@
     "style": {
       "label": "Style",
       "overwriteThemeFont": "Overwrite theme font settings",
-      "fontFamily": "Font family:",
+      "fontFamily": "Font family",
       "fontSize": "Font size",
       "lineHeight": "Line height"
     },
@@ -310,6 +311,8 @@
       "title": "Table of Contents"
     },
     "export": "Export...",
+    "htmlIncludeToc": "Include table of contents sidebar",
+    "htmlIncludeTocDetail": "Add a collapsible sidebar with table of contents on the left side of the exported HTML",
     "options": {
       "pageSizes": {
         "a3": "A3 (297mm x 420mm)",
@@ -335,7 +338,8 @@
         "default": "GitHub (Default)",
         "liber": "Liber"
       }
-    }
+    },
+    "loading": "Loading..."
   },
   "recent": {
     "noTabsOpen": "You have no tabs open.",
@@ -756,8 +760,10 @@
       "quit": "Quit",
       "toggleAutoSave": "Toggle Auto Save",
       "importFile": "Import File",
-      "exportFile": "Export File",
+      "exportFile": "Export",
       "exportFilePdf": "Export as PDF",
+      "exportFileDocx": "Export as DOCX",
+      "exportFileHtml": "Export as HTML",
       "zoom": "Zoom",
       "checkUpdate": "Check for Updates"
     },

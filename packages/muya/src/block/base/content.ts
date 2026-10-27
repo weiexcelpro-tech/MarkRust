@@ -411,6 +411,11 @@ class Content extends TreeNode {
         if (!isMouseEvent(event))
             return;
 
+        // When lazyInlineRender is on, the user might click a block whose inline
+        // content hasn't been patched yet. Flush it so getCursor/setCursor work
+        // on the real DOM (with text nodes) instead of the empty content span.
+        this.flushLazyPatch();
+
         requestAnimationFrame(() => {
             if (event.shiftKey && this.selection.anchorBlock !== this)
                 return;
@@ -533,6 +538,12 @@ class Content extends TreeNode {
         }
 
         if (cursorBlock) {
+            // When lazyInlineRender is on, the target block may not have been
+            // patched yet. Flush it so setCursor/getCursorYOffset see rendered
+            // DOM (with text nodes) instead of the empty skeleton.
+            if (typeof cursorBlock.flushLazyPatch === 'function') {
+                cursorBlock.flushLazyPatch();
+            }
             this.update();
             cursorBlock.setCursor(offset, offset, true);
         }
@@ -547,6 +558,10 @@ class Content extends TreeNode {
             this._scheduleLazyPatch();
         }
         else {
+            // Eager path (lazy render off, or IntersectionObserver unavailable):
+            // the inline content is rendered right now, so record it — otherwise
+            // a later flushLazyPatch() would pointlessly re-render the block.
+            this._lazyPatched = true;
             this.update();
         }
     }
@@ -608,6 +623,21 @@ class Content extends TreeNode {
         this._lazyObserver?.disconnect();
         this._lazyObserver = null;
         this.update();
+    }
+
+    /**
+     * Update inline content and record that the lazy patch has happened, so a
+     * later `flushLazyPatch()` is a no-op instead of re-rendering the block
+     * with a bare `update()` — which would wipe whatever this call just drew
+     * (the search module's `mu-highlight`/`mu-selection` spans live only in
+     * that render). Search patches out-of-viewport blocks directly through
+     * this path.
+     */
+    updateAndMarkLazyPatched(cursor?: IRenderCursor, highlights: IHighlight[] = []): void {
+        this._lazyPatched = true;
+        this._lazyObserver?.disconnect();
+        this._lazyObserver = null;
+        this.update(cursor, highlights);
     }
 
     /**

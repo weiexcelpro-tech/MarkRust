@@ -109,6 +109,14 @@ export interface PreferencesState {
 
   watcherUsePolling: boolean
 
+  // ----- Export (v2.0) -----
+  exportImageEmbed: 'embed' | 'reference'
+  exportImageResize: 'original' | 'auto'
+  exportImageMaxWidth: number
+  exportShowConfigDialog: boolean
+  docxPageSize: 'A4' | 'Letter'
+  docxPageMargin: 'normal' | 'narrow' | 'wide'
+
   // ----- Edit modes (per-window, not persisted) -----
   typewriter: boolean
   focus: boolean
@@ -141,7 +149,7 @@ export const usePreferencesStore = defineStore('preferences', {
   state: (): PreferencesState => ({
     autoSave: false,
     autoSaveDelay: 5000,
-    titleBarStyle: 'custom',
+    titleBarStyle: 'native', // B08 修复：与 src-tauri/resources/preferences-default.json 默认对齐，保证 custom⇒decorations:false 不变量成立
     openFilesInNewWindow: false,
     openFolderInNewWindow: false,
     zoom: 1.0,
@@ -177,7 +185,7 @@ export const usePreferencesStore = defineStore('preferences', {
     trimTrailingNewline: 2,
     textDirection: 'ltr',
     hideQuickInsertHint: false,
-    imageInsertAction: 'folder',
+    imageInsertAction: 'path',
     imagePreferRelativeDirectory: false,
     imageRelativeDirectoryBase: 'file',
     imageRelativeDirectoryName: 'assets',
@@ -229,6 +237,14 @@ export const usePreferencesStore = defineStore('preferences', {
     typewriter: false, // typewriter mode
     focus: false,
     sourceCode: false, // source code mode
+
+    // Export (v2.0)
+    exportImageEmbed: 'embed',
+    exportImageResize: 'auto',
+    exportImageMaxWidth: 1024,
+    exportShowConfigDialog: true,
+    docxPageSize: 'A4',
+    docxPageMargin: 'normal',
 
     // user configration
     imageFolderPath: '',

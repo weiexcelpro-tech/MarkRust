@@ -88,6 +88,8 @@ export const de = {
         'Paste web image or local image path. Use': 'Webbild oder lokalen Pfad einfügen. Modus wechseln',
         'simple mode': 'einfacher Modus',
         'full mode': 'vollständiger Modus',
+        'Insert as path': 'Als Pfad einfügen',
+        'Insert as Base64': 'Als Base64 einfügen',
         // preview block
         'Loading...': 'Wird geladen...',
         'Invalid Diagram Code': 'Ungültiger Diagramm-Code',

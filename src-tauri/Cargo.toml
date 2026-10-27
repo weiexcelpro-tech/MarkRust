@@ -1,6 +1,6 @@
 [package]
 name = "markrust"
-version = "1.0.31"
+version = "1.1.7"
 description = "MarkRust — Markdown editor powered by Rust + Tauri 2"
 authors = ["Mr.Jin"]
 edition = "2021"
@@ -15,7 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
@@ -49,6 +49,30 @@ keyring = "3"
 # Phase 5: 偏好持久化 + 更新检查
 reqwest = { version = "0.12", features = ["json"] }
 semver = "1"
+
+# v2.0: DOCX 导出 + 图片处理
+pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
+docx-rs = "0.4"
+base64 = "0.22"
+image = "0.25"
+# B10 加固：pack 前对 document.xml 做良构性校验（真实事故：注入错位产出损坏 docx）
+quick-xml = "0.42"
+
+# e2e 内容级测试：解包 DOCX（OOXML zip）读取 word/document.xml 做断言。
+# 复用 docx-rs 已带入并锁定在 Cargo.lock 的 zip 8.x，不引入第二个版本。
+[dev-dependencies]
+zip = "8"
+
+# v2.0: PDF 静默导出（WebView2 PrintToPdf，Windows only）
+[target.'cfg(target_os = "windows")'.dependencies]
+# e2e 修复：与 tauri/wry 2.12 实际解析的 webview2-com 0.39（windows-core 0.62）对齐，
+# 否则 controller.CoreWebView2() 返回的 ICoreWebView2 与本地 Interface trait 跨 crate 不互认（E0599）
+webview2-com = "0.39"
+windows-core = "0.62"
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
 
 [features]
 # Release builds MUST enable this feature so that tauri embeds frontend assets
