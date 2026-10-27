@@ -5,20 +5,49 @@
  *   ![mermaid](data:image/png;base64,<b64>)
  * Rust export_docx 按 image 事件内嵌 PNG，无需引入任何渲染器。
  *
- * 实现：每个围栏单独走 muya 的 MarkdownToHtml 渲染管线（与 styledHtml 导出同一条
- * _renderMermaid 路径，编辑器外独立容器、不受滚动虚拟化影响），把渲染出的 svg
- * 序列化后经 canvas 转 PNG data URI；宽度取 svg 实际宽、2x 缩放保证清晰度，上限 1600px。
- * 单个块渲染失败时保留源码并继续，不阻断导出（失败兜底）。
+ * 【实现 v2 —— 独立 mermaid 渲染器（真实事故修复）】
+ * v1 借道 muya 的 MarkdownToHtml 渲染管线取 svg，但该管线的 mermaid 渲染是
+ * 异步懒加载（首载需动态加载 mermaid 图形模块），renderHtml 返回时 svg 可能
+ * 尚未就绪，查询落空即静默「保留源码」——真机导出因此回退为源码。
+ * v2 直接调用 mermaid.render（编辑器的直接依赖，非 muya 内部懒加载）：
+ * 全程 await、无竞态；flowchart 关闭 htmlLabels（foreignObject 会令 canvas
+ * 光栅化空白）；单块失败保留源码并由调用方显式提示，不再无声降级。
  */
-import { MarkdownToHtml } from '@muyajs/core'
-import type { Muya } from '@muyajs/core'
+import mermaid from 'mermaid'
 
 /** GFM 围栏：```mermaid（可带信息串）…```，捕获围栏内源码 */
 const MERMAID_FENCE_RE = /^```mermaid[^\n]*\n([\s\S]*?)^```[ \t]*$/gm
 
-/** 2x 缩放 + 画布宽度上限（毫秒级清晰度/体积折中） */
+/** 2x 缩放 + 画布宽度上限（清晰度/体积折中） */
 const PNG_SCALE = 2
 const MAX_CANVAS_WIDTH = 1600
+
+/** mermaid.initialize 只需一次；主题变化时重置 */
+let initializedTheme: string | null = null
+function ensureMermaidInit(theme: 'light' | 'dark'): void {
+  if (initializedTheme === theme) return
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: theme === 'dark' ? 'dark' : 'default',
+    // foreignObject（htmlLabels）在 canvas 光栅化时可能空白，用纯文本标签保证 PNG 质量
+    flowchart: { htmlLabels: false },
+    sequence: { useMaxWidth: false }
+  })
+  initializedTheme = theme
+}
+
+/** 从应用根节点探测当前明暗主题（编辑器按主题挂 dark class） */
+function detectTheme(): 'light' | 'dark' {
+  const root = document.querySelector('.editor-component') ?? document.body
+  if (
+    root.closest('.dark') !== null ||
+    root.classList.contains('dark') ||
+    document.documentElement.classList.contains('dark')
+  ) {
+    return 'dark'
+  }
+  return 'light'
+}
 
 /** markdown 中 ```mermaid 围栏数量（0 时导出可跳过整条替换链路） */
 export function countMermaidFences(markdown: string): number {
@@ -28,16 +57,17 @@ export function countMermaidFences(markdown: string): number {
 /**
  * 把 markdown 中所有 ```mermaid 围栏替换为 PNG data URI 图片语法。
  * @param markdown 原始 markdown（来自 editor.getMarkdown()）
- * @param muya     当前编辑器实例（MarkdownToHtml 需要它读主题等选项，可为 undefined）
- * @returns 替换后的 markdown；无围栏或全部失败时原样返回
+ * @returns { markdown, replaced, failed } —— failed>0 时调用方应显式提示用户
  */
 export async function replaceMermaidWithPngImages(
-  markdown: string,
-  muya?: Muya
-): Promise<string> {
-  if (!markdown || !markdown.includes('```mermaid')) return markdown
+  markdown: string
+): Promise<{ markdown: string; replaced: number; failed: number }> {
+  const empty = { markdown, replaced: 0, failed: 0 }
+  if (!markdown || !markdown.includes('```mermaid')) return empty
   const fences = [...markdown.matchAll(MERMAID_FENCE_RE)]
-  if (fences.length === 0) return markdown
+  if (fences.length === 0) return empty
+
+  ensureMermaidInit(detectTheme())
 
   interface Replacement {
     start: number
@@ -45,19 +75,26 @@ export async function replaceMermaidWithPngImages(
     dataUri: string
   }
   const replacements: Replacement[] = []
+  let failed = 0
   for (const match of fences) {
     const start = match.index
     if (start === undefined) continue
     try {
-      const svg = await renderMermaidFenceSvg(match[1] ?? '', muya)
-      if (!svg) continue
+      const svg = await renderMermaidCodeSvg(match[1] ?? '')
+      if (!svg) {
+        failed += 1
+        continue
+      }
       const dataUri = await svgElementToPngDataUri(svg, PNG_SCALE, MAX_CANVAS_WIDTH)
       if (dataUri) {
         replacements.push({ start, end: start + match[0].length, dataUri })
+      } else {
+        failed += 1
       }
     } catch (err) {
-      // 失败兜底：单个块渲染失败保留源码并继续（不阻断导出）
+      // 单块失败：保留源码并计数（调用方显式提示，不再无声降级）
       console.warn('[mermaidExport] fence render failed, keeping source:', err)
+      failed += 1
     }
   }
 
@@ -67,16 +104,26 @@ export async function replaceMermaidWithPngImages(
     const r = replacements[i]!
     result = result.slice(0, r.start) + `![mermaid](${r.dataUri})` + result.slice(r.end)
   }
-  return result
+  return { markdown: result, replaced: replacements.length, failed }
 }
 
-/** 单围栏独立渲染：每个 ```mermaid 块走一次独立小文档渲染，失败只影响本块 */
-async function renderMermaidFenceSvg(source: string, muya?: Muya): Promise<SVGSVGElement | null> {
-  const miniDoc = '```mermaid\n' + source.replace(/\n$/, '') + '\n```'
-  const html = await new MarkdownToHtml(miniDoc, muya).renderHtml()
+/** 独立渲染：直接 mermaid.render 单围栏源码，全程 await 无竞态。
+ *  首次渲染需动态加载 mermaid 图形 chunk（WebView2/tauri 协议下偶发瞬时失败），
+ *  失败时延迟重试一次（Chromium 不缓存 dynamic import 失败，重试会重新拉取）。 */
+async function renderMermaidCodeSvg(source: string): Promise<SVGSVGElement | null> {
+  const id = 'mermaid-export-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+  let svg: string
+  try {
+    ;({ svg } = await mermaid.render(id, source))
+  } catch (firstErr) {
+    console.warn('[mermaidExport] first render attempt failed, retrying once:', firstErr)
+    await new Promise((r) => setTimeout(r, 400))
+    const retryId = id + '-retry'
+    ;({ svg } = await mermaid.render(retryId, source))
+  }
   const template = document.createElement('template')
-  template.innerHTML = html
-  return (template.content.querySelector('.mermaid svg') as SVGSVGElement | null) ?? null
+  template.innerHTML = svg
+  return (template.content.querySelector('svg') as SVGSVGElement | null) ?? null
 }
 
 /**

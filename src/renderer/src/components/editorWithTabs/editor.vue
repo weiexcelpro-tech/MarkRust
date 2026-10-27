@@ -1522,8 +1522,17 @@ const handleExport = async (options: unknown) => {
       try {
         const filename = (htmlTitle || '')
         // B11: docx 导出前把 ```mermaid 源码块替换为 PNG data URI 图片（与 Rust 契约），
-        // 否则 Rust 侧无渲染路径，docx 内会是 Consolas 源码文本；失败块保留源码继续。
-        const exportMarkdown = await replaceMermaidWithPngImages(markdown, editor.value ?? undefined)
+        // 否则 Rust 侧无渲染路径，docx 内会是 Consolas 源码文本。
+        // v2 独立渲染器：直接 mermaid.render（无 muya 懒加载竞态）；失败块保留源码并显式提示。
+        const { markdown: exportMarkdown, failed: mermaidFailed } =
+          await replaceMermaidWithPngImages(markdown)
+        if (mermaidFailed > 0) {
+          notice.notify({
+            title: 'Mermaid',
+            type: 'warning',
+            message: `${mermaidFailed} 个 mermaid 块渲染失败，导出文档中将保留其源码文本`
+          })
+        }
         editorStore.EXPORT({
           type,
           content: exportMarkdown,
